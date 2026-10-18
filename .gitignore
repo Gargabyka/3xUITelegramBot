@@ -1,0 +1,37 @@
+# Build results
+bin/
+obj/
+
+# JetBrains Rider
+.idea/
+*.DotSettings.user
+
+# User-specific files
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+
+# Secret configuration
+appsettings.Secret.json
+
+# ASP.NET Core
+project.lock.json
+project.fragment.lock.json
+artifacts/
+
+# Visual Studio cache/options
+.vs/
+
+#Database
+*.db
+
+# local databases
+**/*.db
+**/*.sqlite
+**/*.sqlite3
+Host/vpn_bot.db
+data/
+
+#Env
+*.prod.env

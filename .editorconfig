@@ -1,0 +1,73 @@
+root = true
+
+# Общие настройки для всех cs-файлов
+[*.cs]
+
+charset = utf-8
+indent_style = tab
+
+dotnet_analyzer_diagnostic.severity = warning # Установим для всех анализаторов уровень "Warning" по умолчанию
+dotnet_analyzer_diagnostic.category-style.severity = silent # Отключим анализаторы от Visual Studio с префиксом "IDE", чтобы кол-во предупреждений было одинаковым между VS и Rider
+
+# Настройки правил для анализаторов из nuget-пакета StyleCop.Analyzers
+dotnet_diagnostic.sa1101.severity = none # Чтобы было не нужно добавлять префикс "this."
+dotnet_diagnostic.sa1124.severity = none # Чтобы было можно использовать регионы (#region)
+dotnet_diagnostic.sa1309.severity = none # Чтобы было можно использовать нижнее подчеркивание к полям вместо использования префикса "this."
+dotnet_diagnostic.sa1600.severity = none # Чтобы было не нужно добавлять документацию к classes, constructors, delegates, enums, events, finalizers, indexers, interfaces, methods, properties, and structs
+dotnet_diagnostic.sa1601.severity = none # Чтобы было не нужно добавлять документацию частичным классам (partial class)
+dotnet_diagnostic.sa1602.severity = none # Чтобы было не нужно добавлять документацию к элементам перечисления (enum)
+dotnet_diagnostic.sa1611.severity = none # Чтобы было не нужно добавлять документацию ко ВСЕМ аргументам метода
+dotnet_diagnostic.sa1615.severity = none # Чтобы было не нужно добавлять документацию для return-элемента в методе
+dotnet_diagnostic.sa1618.severity = none # Чтобы было не нужно добавлять документацию к generic-типу
+dotnet_diagnostic.sa1623.severity = none # Чтобы было не нужно добавлять комментарии по определенному шаблону (например добавлять слово "Get" для свойств с геттером)
+dotnet_diagnostic.sa1629.severity = none # Чтобы было не нужно все xml-комментарии заканчивать точкой
+dotnet_diagnostic.sa1633.severity = none # Чтобы не добавлять в каждый файл заголовок с копирайтингом
+dotnet_diagnostic.sa1642.severity = none # Чтобы было не нужно добавлять комментарии к конструктору по определенному шаблону (например добавлять слово "Initializes")
+dotnet_diagnostic.SA1200.severity = none # Чтобы директивы находились снаружи объявления namespace, вот так:
+dotnet_diagnostic.SA1206.severity = none # Чтобы модификатор required можно ставить после public
+dotnet_diagnostic.SA1313.severity = none # Чтобы в primary конструкторах можно делать UpperCase
+dotnet_diagnostic.SA1000.severity = none # Чтобы не делать пробел после new()
+dotnet_diagnostic.SA1011.severity = none # Чтобы не делать пробел после [] ?
+dotnet_diagnostic.SA1009.severity = none #
+dotnet_diagnostic.SA1118.severity = none # Разрешить мультистрочный текст
+dotnet_diagnostic.SA1010.severity = none # Разрешить пробел после = []
+dotnet_diagnostic.SA0001.severity = none # Разрешить не документировать код
+dotnet_diagnostic.SA1027.severity = none # Разрешить пробелы у кода (    int a = 1)
+
+# Глушим обязательное прокидывание культуры в методы типа ToString
+dotnet_diagnostic.ca1304.severity = suggestion # в char.ToUpper
+dotnet_diagnostic.ca1305.severity = suggestion # в string.Format
+dotnet_diagnostic.ca1310.severity = suggestion # в StartsWith
+dotnet_diagnostic.ca1311.severity = suggestion # в ToLower
+
+dotnet_diagnostic.ca1069.severity = error # Чтобы нельзя было добавить повторяющиеся числа в значении перечисления
+dotnet_diagnostic.ca1716.severity = none # Чтобы можно было называть методы предопределенными словами (Get)
+dotnet_diagnostic.ca1711.severity = none # Чтобы было можно было называть классы/интерфейсы с определенными суффиксами (Attribute, Dictionary) при этом не наследуясь от системных классов
+dotnet_diagnostic.ca1720.severity = none # Чтобы можно было называть свойства предопределенными словами (Bool, Signed)
+dotnet_diagnostic.ca1822.severity = suggestion # Не обязательно делать метод статическим, если он не использует свойства класса
+dotnet_diagnostic.ca1848.severity = none # Чтобы было НЕ использовать производительные методы логгера
+dotnet_diagnostic.ca1852.severity = suggestion # Чтобы было НЕ обязательно использовать sealed классы
+dotnet_diagnostic.ca1859.severity = suggestion # Чтобы можно было использовать в контрактах методов более абстрактные базовые классы и интерфейсы вместо конкретных типов
+dotnet_diagnostic.ca1860.severity = warning # Чтобы предлагалось избегать использования Enumerable.Any()
+dotnet_diagnostic.ca2201.severity = suggestion # Чтобы можно было использовать ApplicationException
+dotnet_diagnostic.ca2208.severity = suggestion # Чтобы можно было ArgumentException не с именем параметра, а именем свойства в модели
+
+dotnet_diagnostic.syslib1045.severity = suggestion # Чтобы можно было использовать Regex(), а не GeneratedRegexAttribute
+
+# Настройки правил для анализаторов из nuget-пакета Microsoft.VisualStudio.Threading.Analyzers
+dotnet_diagnostic.vsthrd111.severity = none # Чтобы было не нужно добавлять ".ConfigureAwait(bool)" ко всем асинхронным методам
+dotnet_diagnostic.vsthrd105.severity = none # Чтобы было не нужно добавлять аргумент "TaskScheduler.Default" к методам "StartNew" и "ContinueWith", так как у нас веб-приложение и дедлока случиться не может
+dotnet_diagnostic.vsthrd103.severity = none # Временная настройка для плавного перехода на асинхронные методы репозитория, потом можно будет удалить
+# Настройки правил для компилятора
+dotnet_diagnostic.cs8618.severity = silent # Отключает предупреждение, чтобы было необязательно заполнять все НЕналбл свойства в каждом конструкторе
+
+# ReSharper properties
+resharper_csharp_wrap_after_invocation_lpar = true
+resharper_csharp_wrap_arguments_style = chop_if_long
+
+[Host/Program.cs]
+dotnet_diagnostic.SA1516.severity = none
+
+# Отключаем StyleCop для EF Core миграций (универсально)
+[**/Migrations/**/*.cs]
+dotnet_analyzer_diagnostic.severity = none

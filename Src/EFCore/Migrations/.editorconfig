@@ -1,0 +1,8 @@
+﻿root = false
+
+[*.cs]
+dotnet_diagnostic.SA1413.severity = none
+dotnet_diagnostic.CA1861.severity = none
+
+# Если хотите гарантированно глушить вообще всё в миграциях:
+# dotnet_analyzer_diagnostic.severity = none

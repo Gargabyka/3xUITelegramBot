@@ -1,0 +1,10 @@
+<Solution>
+  <Folder Name="/Src/">
+    <Project Path="Src/Application/Application.csproj" />
+    <Project Path="Src/Domain/Domain.csproj" />
+    <Project Path="Src/EFCore/EFCore.csproj" />
+    <Project Path="Src/Telegram/Telegram.csproj" />
+    <Project Path="Src/XUi/XUi.csproj" />
+  </Folder>
+  <Project Path="Host/Host.csproj" />
+</Solution>
