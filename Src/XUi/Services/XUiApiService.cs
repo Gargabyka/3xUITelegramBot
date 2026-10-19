@@ -46,7 +46,7 @@ public class XUiApiService : IXUiApiService
 
             var traffic = client["traffic"] as JsonObject;
             DateTimeOffset? seen = lastOnline.TryGetValue(email, out var ts) && ts > 0
-                ? DateTimeOffset.FromUnixTimeSeconds(ts)
+                ? DateTimeOffset.FromUnixTimeMilliseconds(ts)
                 : null;
 
             result.Add(new XUiClient(
