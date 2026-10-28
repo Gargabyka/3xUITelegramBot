@@ -14,6 +14,7 @@ obj/
 
 # Secret configuration
 appsettings.Secret.json
+appsettings.secret.json
 
 # ASP.NET Core
 project.lock.json
