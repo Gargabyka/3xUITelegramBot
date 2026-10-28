@@ -4,15 +4,19 @@ services:
     container_name: vpn-bot
     restart: unless-stopped
 
+    # Секреты не хранятся в этом файле: значения ${...} берутся
+    #  - в Portainer — из Environment variables стека (сохраняются между redeploy);
+    #  - локально — из файла .env рядом с этим файлом (образец — .env.example).
+    # ${VAR:?текст} — обязательная переменная: без неё стек не развернётся, вместо бота с пустым токеном.
     environment:
       ASPNETCORE_ENVIRONMENT: "Production"
-      Telegram__Token: "<TOKEN_PLACEHOLDER>"
-      Telegram__AdminIds__0: "<ADMIN_ID_PLACEHOLDER>"
+      Telegram__Token: "${TELEGRAM_TOKEN:?Задайте TELEGRAM_TOKEN}"
+      Telegram__AdminIds__0: "${TELEGRAM_ADMIN_ID:?Задайте TELEGRAM_ADMIN_ID}"
       # Адрес панели 3x-ui с webBasePath. Если 3x-ui в docker с network_mode: host —
       # используйте http://host.docker.internal:<порт>/<webBasePath>/ (см. extra_hosts ниже)
-      XUi__ApiUrl: "http://host.docker.internal:2053/<WEB_BASE_PATH>/"
+      XUi__ApiUrl: "${XUI_API_URL:?Задайте XUI_API_URL}"
       # Settings -> Security -> API Token
-      XUi__ApiToken: "<API_TOKEN_PLACEHOLDER>"
+      XUi__ApiToken: "${XUI_API_TOKEN:?Задайте XUI_API_TOKEN}"
       # Профили VLESS: ID inbound'а (колонка ID в панели), профиль, при необходимости Port для ссылки/QR
       XUi__Inbounds__0__Id: "1"
       XUi__Inbounds__0__Profile: "VlessRaw"
@@ -24,9 +28,9 @@ services:
       XUi__Inbounds__2__Flow: ""
       XUi__Inbounds__2__Port: "443"
       # amnezia-wg-easy (необязательно): веб-интерфейс и пароль (PASSWORD контейнера)
-      AmneziaWg__Enabled: "true"
-      AmneziaWg__ApiUrl: "http://host.docker.internal:51821/"
-      AmneziaWg__ApiPassword: "<AMNEZIA_WEB_PASSWORD_PLACEHOLDER>"
+      AmneziaWg__Enabled: "${AMNEZIA_ENABLED:-true}"
+      AmneziaWg__ApiUrl: "${AMNEZIA_API_URL:-http://host.docker.internal:51821/}"
+      AmneziaWg__ApiPassword: "${AMNEZIA_PASSWORD:-}"
       ConnectionStrings__Sqlite: "Data Source=/data/vpn_bot.db"
 
     extra_hosts:

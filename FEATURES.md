@@ -108,6 +108,8 @@
 
 Бот запускается через `docker-compose.yml` на том же сервере, что и 3x-ui; настройки задаются в `appsettings.json` или переменными окружения (`Раздел__Ключ`).
 
+Секреты (`TELEGRAM_TOKEN`, `TELEGRAM_ADMIN_ID`, `XUI_API_URL`, `XUI_API_TOKEN`, `AMNEZIA_PASSWORD` и др.) в `docker-compose.yml` не хранятся — там только ссылки `${...}`. В Portainer значения задаются один раз в Stack → Environment variables (Advanced mode — можно вставить содержимое `.env.example`) и сохраняются между redeploy. Локально они берутся из файла `.env` рядом с compose (в git не попадает, образец — `.env.example`). Без обязательных переменных стек не развернётся и покажет, какой не хватает.
+
 | Ключ | Назначение | По умолчанию |
 | --- | --- | --- |
 | `Telegram:Token` | Токен бота от @BotFather | — |

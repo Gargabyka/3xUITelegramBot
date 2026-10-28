@@ -30,8 +30,12 @@ artifacts/
 **/*.db
 **/*.sqlite
 **/*.sqlite3
+**/*.db-shm
+**/*.db-wal
 Host/vpn_bot.db
 data/
 
 #Env
 *.prod.env
+# Секреты для docker compose (образец — .env.example)
+.env
