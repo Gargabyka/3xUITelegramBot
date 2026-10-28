@@ -1,4 +1,5 @@
-﻿using Domain.Interfaces;
+﻿using Domain.Enums;
+using Domain.Interfaces;
 using Domain.Interfaces.Repository;
 using JetBrains.Annotations;
 using Microsoft.Extensions.DependencyInjection;
@@ -17,14 +18,17 @@ public sealed class UserDeleteConfirmTelegramCallbackHandler : TelegramAdminCall
 {
 	private readonly ITelegramBotClient _bot;
 	private readonly IServiceScopeFactory _scopeFactory;
+	private readonly AuditLogger _audit;
 	private readonly TelegramOptions _telegramOptions;
 
 	public UserDeleteConfirmTelegramCallbackHandler(
 		ITelegramBotClient telegramBot,
 		IOptions<TelegramOptions> telegramOptions,
-		IServiceScopeFactory scopeFactory)
+		IServiceScopeFactory scopeFactory,
+		AuditLogger audit)
 		: base(telegramBot, telegramOptions, scopeFactory)
 	{
+		_audit = audit;
 		_bot = telegramBot;
 		_scopeFactory = scopeFactory;
 		_telegramOptions = telegramOptions.Value;
@@ -85,8 +89,12 @@ public sealed class UserDeleteConfirmTelegramCallbackHandler : TelegramAdminCall
 			return;
 		}
 
+		var described = AuditLogger.Describe(user);
+
 		repo.Remove(user);
 		await uow.SaveChangesAsync(cancellationToken);
+
+		await _audit.LogAsync(chatId, AuditAction.UserDeleted, described, cancellationToken);
 
 		var back = BackTo(TelegramCallbackEvent.UserList, sourceEvent: TelegramCallbackEvent.AdminPanel);
 

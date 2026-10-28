@@ -51,13 +51,16 @@ public static class DiContainerExtensions
 			throw new InvalidOperationException("XUi:Inbounds: профиль должен быть VlessRaw, VlessXhttp или VlessXhttpCdn и не повторяться.");
 		}
 
+		services.AddSingleton<XUiClientListCache>();
+
 		// По одному серверу на каждый inbound: они отличаются только inbound'ом и портом в ссылке
 		foreach (var inbound in inbounds)
 		{
 			services.AddTransient<IVpnBackend>(sp => new XUiApiService(
 				sp.GetRequiredService<IHttpClientFactory>().CreateClient(HttpClientName),
 				sp.GetRequiredService<IOptions<XUiOptions>>(),
-				inbound));
+				inbound,
+				sp.GetRequiredService<XUiClientListCache>()));
 		}
 	}
 }

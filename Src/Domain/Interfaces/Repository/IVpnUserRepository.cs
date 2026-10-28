@@ -25,6 +25,11 @@ public interface IVpnUserRepository
 	public Task<int[]> GetUsedPeerIdsAsync(CancellationToken cancellationToken);
 
 	/// <summary>
+	/// Получить все связи пользователь↔peer (с Peer и пользователем).
+	/// </summary>
+	public Task<VpnUser[]> GetAllLinksAsync(CancellationToken cancellationToken);
+
+	/// <summary>
 	/// Удалить связь между пользователем и соединением.
 	/// </summary>
 	public Task<int> RemoveLinkAsync(int telegramUserId, int peerId, CancellationToken cancellationToken);

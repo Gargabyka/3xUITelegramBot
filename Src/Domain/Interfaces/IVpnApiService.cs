@@ -47,4 +47,9 @@ public interface IVpnApiService
 	/// Отключить клиента (сервер определяется по идентификатору)
 	/// </summary>
 	public Task DisableClientAsync(Guid id, CancellationToken cancellationToken);
+
+	/// <summary>
+	/// Переименовать клиента (сервер определяется по идентификатору)
+	/// </summary>
+	public Task RenameClientAsync(Guid id, string newName, CancellationToken cancellationToken);
 }

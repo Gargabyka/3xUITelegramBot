@@ -1,4 +1,5 @@
 using Application.Services;
+using Domain.Enums;
 using JetBrains.Annotations;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
@@ -18,14 +19,17 @@ public sealed class CreateInviteTelegramCallbackHandler : TelegramAdminCallbackH
 {
 	private readonly ITelegramBotClient _telegramBot;
 	private readonly IServiceScopeFactory _scopeFactory;
+	private readonly AuditLogger _audit;
 	private readonly TelegramOptions _telegramOptions;
 
 	public CreateInviteTelegramCallbackHandler(
 		ITelegramBotClient telegramBot,
 		IOptions<TelegramOptions> telegramOptions,
-		IServiceScopeFactory scopeFactory)
+		IServiceScopeFactory scopeFactory,
+		AuditLogger audit)
 		: base(telegramBot, telegramOptions, scopeFactory)
 	{
+		_audit = audit;
 		_telegramBot = telegramBot;
 		_scopeFactory = scopeFactory;
 		_telegramOptions = telegramOptions.Value;
@@ -49,6 +53,8 @@ public sealed class CreateInviteTelegramCallbackHandler : TelegramAdminCallbackH
 			var inviteService = scope.ServiceProvider.GetRequiredService<InviteService>();
 			token = await inviteService.CreateAsync(chatId.Value, lifetime, cancellationToken);
 		}
+
+		await _audit.LogAsync(chatId.Value, AuditAction.InviteCreated, $"срок действия {lifetime.TotalDays:0} дн.", cancellationToken);
 
 		var me = await _telegramBot.GetMe(cancellationToken);
 		var link = $"https://t.me/{me.Username}?start=inv_{token}";

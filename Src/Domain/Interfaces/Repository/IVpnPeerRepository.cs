@@ -30,6 +30,13 @@ public interface IVpnPeerRepository
 	public Task<VpnPeer[]> GetPeersAsync(CancellationToken cancellationToken);
 
 	/// <summary>
+	/// Получить все соединения для изменения (с отслеживанием изменений)
+	/// </summary>
+	/// <param name="cancellationToken">Токен отмены</param>
+	/// <returns>Возвращает список соединений</returns>
+	public Task<VpnPeer[]> GetPeersForUpdateAsync(CancellationToken cancellationToken);
+
+	/// <summary>
 	/// Найти соединение по идентификатору клиента 3x-ui.
 	/// </summary>
 	public Task<VpnPeer?> GetByClientIdAsync(Guid clientId, CancellationToken cancellationToken);

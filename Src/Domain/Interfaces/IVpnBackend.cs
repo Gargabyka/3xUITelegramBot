@@ -41,4 +41,9 @@ public interface IVpnBackend
 	/// Отключить клиента
 	/// </summary>
 	public Task DisableClientAsync(Guid id, CancellationToken cancellationToken);
+
+	/// <summary>
+	/// Переименовать клиента (ключи и подключение не меняются)
+	/// </summary>
+	public Task RenameClientAsync(Guid id, string newName, CancellationToken cancellationToken);
 }

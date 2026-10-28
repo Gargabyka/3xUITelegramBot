@@ -34,4 +34,12 @@ public interface IVpnTrafficSnapshotRepository
 	/// <param name="clientId">Идентификатор клиента 3x-ui</param>
 	/// <param name="cancellationToken">Токен отмены</param>
 	public Task<DateTime?> GetFirstSnapshotDateAsync(Guid clientId, CancellationToken cancellationToken);
+
+	/// <summary>
+	/// Удалить снимки старше заданной даты, которые не влияют на расчёт расхода
+	/// </summary>
+	/// <param name="olderThanUtc">Сжимаются только снимки до этой даты</param>
+	/// <param name="cancellationToken">Токен отмены</param>
+	/// <returns>Сколько снимков удалено</returns>
+	public Task<int> CompactAsync(DateTime olderThanUtc, CancellationToken cancellationToken);
 }

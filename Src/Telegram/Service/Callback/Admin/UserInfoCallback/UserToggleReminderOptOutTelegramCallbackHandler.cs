@@ -1,3 +1,4 @@
+using Domain.Enums;
 using Domain.Interfaces;
 using Domain.Interfaces.Repository;
 using JetBrains.Annotations;
@@ -17,13 +18,16 @@ public sealed class UserToggleReminderOptOutTelegramCallbackHandler : TelegramAd
 {
 	private readonly ITelegramBotClient _bot;
 	private readonly IServiceScopeFactory _scopeFactory;
+	private readonly AuditLogger _audit;
 
 	public UserToggleReminderOptOutTelegramCallbackHandler(
 		ITelegramBotClient telegramBot,
 		IOptions<TelegramOptions> telegramOptions,
-		IServiceScopeFactory scopeFactory)
+		IServiceScopeFactory scopeFactory,
+		AuditLogger audit)
 		: base(telegramBot, telegramOptions, scopeFactory)
 	{
+		_audit = audit;
 		_bot = telegramBot;
 		_scopeFactory = scopeFactory;
 	}
@@ -68,6 +72,12 @@ public sealed class UserToggleReminderOptOutTelegramCallbackHandler : TelegramAd
 
 		user.ReminderOptOut = !user.ReminderOptOut;
 		await uow.SaveChangesAsync(cancellationToken);
+
+		await _audit.LogAsync(
+			chatId,
+			AuditAction.UserReminderToggled,
+			$"{AuditLogger.Describe(user)}: {(user.ReminderOptOut ? "отключены" : "включены")}",
+			cancellationToken);
 
 		var statusText = user.ReminderOptOut
 			? "Напоминания об оплате хостинга для этого пользователя отключены."

@@ -17,7 +17,10 @@ public static class DiContainerExtensions
 		services.AddScoped<IHostingReminderStateRepository, HostingReminderStateRepository>();
 		services.AddScoped<IVpnTrafficSnapshotRepository, VpnTrafficSnapshotRepository>();
 		services.AddScoped<IInviteRepository, InviteRepository>();
+		services.AddScoped<IAuditLogRepository, AuditLogRepository>();
+		services.AddScoped<AuditLogService>();
 		services.AddScoped<InviteService>();
+		services.AddScoped<PeerSyncService>();
 		services.AddScoped<TelegramUserService>();
 		services.AddTransient<IVpnApiService, VpnApiService>();
 	}

@@ -1,6 +1,7 @@
 using System.Text.RegularExpressions;
 using Application.Services;
 using Domain.Entities;
+using Domain.Enums;
 using Domain.Interfaces;
 using Domain.Interfaces.Repository;
 using Domain.Models;
@@ -26,6 +27,7 @@ public sealed class TelegramHandler : ITelegramHandler
     private readonly TelegramCallbackFactory _callbackFactory;
     private readonly IReadOnlyList<ITelegramTextFlowHandler> _textFlows;
     private readonly IServiceScopeFactory _scopeFactory;
+    private readonly AuditLogger _audit;
 
     public TelegramHandler(
         ITelegramBotClient telegramBot,
@@ -33,8 +35,10 @@ public sealed class TelegramHandler : ITelegramHandler
         TelegramUpdateFactory updateFactory,
         TelegramCallbackFactory callbackFactory,
         IEnumerable<ITelegramTextFlowHandler> textFlows,
-        IServiceScopeFactory scopeFactory)
+        IServiceScopeFactory scopeFactory,
+        AuditLogger audit)
     {
+        _audit = audit;
         _telegramBot = telegramBot;
         _updateFactory = updateFactory;
         _callbackFactory = callbackFactory;
@@ -80,7 +84,7 @@ public sealed class TelegramHandler : ITelegramHandler
 
 	    var chatId = message.Chat.Id;
 
-	    if (!await IsAllowedAsync(chatId, cancellationToken))
+	    if (!await AuthorizeAndSyncProfileAsync(chatId, message.From, cancellationToken))
 	    {
 		    // Незнакомый человек может войти только по ссылке-приглашению
 		    if (await TryAcceptInviteAsync(message, cancellationToken))
@@ -92,9 +96,6 @@ public sealed class TelegramHandler : ITelegramHandler
 		    await _telegramBot.SendMessage(chatId, "Доступ запрещён.", cancellationToken: cancellationToken);
 		    return;
 	    }
-
-	    // Если пользователь есть в таблице — обновим профильные данные при любом использовании бота
-	    await TrySyncTelegramUserProfileAsync(chatId, message.From, cancellationToken);
 
 	    var text = message.Text?.Trim();
 
@@ -133,7 +134,7 @@ public sealed class TelegramHandler : ITelegramHandler
             return;
         }
 
-        if (!await IsAllowedAsync(chatId.Value, cancellationToken))
+        if (!await AuthorizeAndSyncProfileAsync(chatId.Value, callbackQuery.From, cancellationToken))
         {
             await _telegramBot.AnswerCallbackQuery(
                 callbackQueryId: callbackQuery.Id,
@@ -141,9 +142,6 @@ public sealed class TelegramHandler : ITelegramHandler
                 cancellationToken: cancellationToken);
             return;
         }
-
-        // Синхронизация профиля при нажатии любых кнопок
-        await TrySyncTelegramUserProfileAsync(chatId.Value, callbackQuery.From, cancellationToken);
 
         if (!TelegramCallbackDataCodec.TryDecode(callbackQuery.Data, out var request))
         {
@@ -190,6 +188,8 @@ public sealed class TelegramHandler : ITelegramHandler
             "Добро пожаловать! Доступ открыт.",
             cancellationToken: cancellationToken);
 
+        await _audit.LogAsync(from.Id, AuditAction.InviteAccepted, $"приглашение от [{invite.CreatedByTelegramId}]", cancellationToken);
+
         await NotifyInviterAsync(invite, from, cancellationToken);
         return true;
     }
@@ -213,44 +213,24 @@ public sealed class TelegramHandler : ITelegramHandler
         }
     }
 
-    private async Task<bool> IsAllowedAsync(long telegramId, CancellationToken cancellationToken)
+    /// <summary>
+    /// Проверяет доступ и заодно обновляет имя и @username пользователя из Telegram (один запрос к БД)
+    /// </summary>
+    /// <returns>True — пользователь есть в боте или является суперадмином</returns>
+    private async Task<bool> AuthorizeAndSyncProfileAsync(long telegramId, User? from, CancellationToken cancellationToken)
     {
-        if (_telegramOptions.AdminIds.Contains(telegramId))
-        {
-            return true;
-        }
-
         using var scope = _scopeFactory.CreateScope();
-        var repo = scope.ServiceProvider.GetService<ITelegramUserRepository>();
-        if (repo is null)
-        {
-            return false;
-        }
-
-        var user = await repo.GetUserByTelegramIdAsync(telegramId, cancellationToken);
-        return user is not null;
-    }
-
-    private async Task TrySyncTelegramUserProfileAsync(long telegramId, User? from, CancellationToken cancellationToken)
-    {
-        if (from is null)
-        {
-            return;
-        }
-
-        using var scope = _scopeFactory.CreateScope();
-        var userRepository = scope.ServiceProvider.GetService<ITelegramUserRepository>();
-        var unitOfWork = scope.ServiceProvider.GetService<IUnitOfWork>();
-        if (userRepository is null || unitOfWork is null)
-        {
-            return;
-        }
+        var userRepository = scope.ServiceProvider.GetRequiredService<ITelegramUserRepository>();
+        var unitOfWork = scope.ServiceProvider.GetRequiredService<IUnitOfWork>();
 
         var user = await userRepository.GetUserByTelegramIdForUpdateAsync(telegramId, cancellationToken);
-        if (user != null)
+        if (user is not null && from is not null)
         {
+	        // Без изменений SaveChanges не обращается к БД
 	        user.Update(from.FirstName, from.LastName, from.Username);
 	        await unitOfWork.SaveChangesAsync(cancellationToken);
         }
+
+        return user is not null || _telegramOptions.AdminIds.Contains(telegramId);
     }
 }

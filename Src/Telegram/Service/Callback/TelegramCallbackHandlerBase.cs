@@ -70,6 +70,18 @@ public abstract class TelegramCallbackHandlerBase : ITelegramCallbackHandler
     }
 
     /// <summary>
+    /// Отказ в доступе: всплывающее сообщение на кнопке, чат не засоряется
+    /// </summary>
+    /// <param name="update">Событие</param>
+    /// <param name="text">Текст отказа</param>
+    /// <param name="cancellationToken">Токен отмены</param>
+    protected async Task DenyAsync(Update update, string text, CancellationToken cancellationToken)
+    {
+        var (_, _, callbackQueryId) = GetCallbackContext(update);
+        await _telegramBot.AnswerCallbackQuery(callbackQueryId, text, showAlert: true, cancellationToken: cancellationToken);
+    }
+
+    /// <summary>
     /// Возвращаем ответ callback query
     /// </summary>
     /// <param name="update">Событие</param>

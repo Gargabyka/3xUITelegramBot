@@ -74,6 +74,21 @@ public sealed class AdminPanelTelegramCallbackHandler : TelegramAdminCallbackHan
 			CallbackEvent: TelegramCallbackEvent.RefreshConnections,
 			SourceEvent: TelegramCallbackEvent.AdminPanel);
 
+		var statsRequest = new TelegramRequest(
+			Id: Guid.Empty,
+			CallbackEvent: TelegramCallbackEvent.Stats,
+			SourceEvent: TelegramCallbackEvent.AdminPanel);
+
+		var broadcastRequest = new TelegramRequest(
+			Id: Guid.Empty,
+			CallbackEvent: TelegramCallbackEvent.Broadcast,
+			SourceEvent: TelegramCallbackEvent.AdminPanel);
+
+		var auditLogRequest = new TelegramRequest(
+			Id: Guid.Empty,
+			CallbackEvent: TelegramCallbackEvent.AuditLog,
+			SourceEvent: TelegramCallbackEvent.AdminPanel);
+
 		var markup = new InlineKeyboardMarkup(
 		[
 			[
@@ -90,6 +105,15 @@ public sealed class AdminPanelTelegramCallbackHandler : TelegramAdminCallbackHan
 			],
 			[
 				InlineKeyboardButton.WithCallbackData("🔄 Обновить соединения", TelegramCallbackDataCodec.Encode(refreshConnectionsRequest)),
+			],
+			[
+				InlineKeyboardButton.WithCallbackData("📊 Статистика", TelegramCallbackDataCodec.Encode(statsRequest)),
+			],
+			[
+				InlineKeyboardButton.WithCallbackData("📣 Рассылка", TelegramCallbackDataCodec.Encode(broadcastRequest)),
+			],
+			[
+				InlineKeyboardButton.WithCallbackData("📜 Журнал действий", TelegramCallbackDataCodec.Encode(auditLogRequest)),
 			],
 			[
 				InlineKeyboardButton.WithCallbackData("⬅️ Назад", TelegramCallbackDataCodec.Encode(backRequest))

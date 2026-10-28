@@ -29,6 +29,11 @@ public class VpnPeerRepository : IVpnPeerRepository
 			.AsNoTracking()
 			.ToArrayAsync(cancellationToken);
 
+	public Task<VpnPeer[]> GetPeersForUpdateAsync(CancellationToken cancellationToken)
+		=> _dbContext
+			.VpnPeers
+			.ToArrayAsync(cancellationToken);
+
 	public Task<VpnPeer?> GetByClientIdAsync(Guid clientId, CancellationToken cancellationToken)
 		=> _dbContext
 			.VpnPeers

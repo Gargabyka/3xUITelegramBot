@@ -36,10 +36,16 @@ public static class DiContainerExtensions
             .Bind(configuration.GetSection("HostingReminder"))
             .ValidateOnStart();
 
+        services.AddSingleton<TelegramAccessService>();
+        services.AddSingleton<AuditLogger>();
         services.AddSingleton<ITelegramHandler, TelegramHandler>();
         services.AddHostedService<TelegramLongPollingService>();
         services.AddHostedService<HostingReminderBackgroundService>();
         services.AddHostedService<VpnTrafficSnapshotBackgroundService>();
+
+        services.AddOptions<MonitoringOptions>()
+            .Bind(configuration.GetSection("Monitoring"));
+        services.AddHostedService<ServerMonitoringBackgroundService>();
 
         AddTelegramUpdate(services);
         AddTelegramCallback(services);
@@ -64,12 +70,16 @@ public static class DiContainerExtensions
     {
 	    services.AddSingleton<ITelegramTextFlowHandler, AddClientNameTextFlowHandler>();
 	    services.AddSingleton<ITelegramTextFlowHandler, AddUserByContactTextFlowHandler>();
+	    services.AddSingleton<ITelegramTextFlowHandler, RenameClientTextFlowHandler>();
+	    services.AddSingleton<ITelegramTextFlowHandler, BroadcastTextFlowHandler>();
     }
 
     private static void AddTelegramStores(IServiceCollection services)
     {
 	    services.AddSingleton<IAddClientStateStore, InMemoryAddClientStateStore>();
 	    services.AddSingleton<IAddUserStateStore, InMemoryAddUserStateStore>();
+	    services.AddSingleton<ExpiringStateStore<RenameClientState>>();
+	    services.AddSingleton<ExpiringStateStore<BroadcastState>>();
     }
 
     private static void AddAllImplementationsAsTransient<TService>(

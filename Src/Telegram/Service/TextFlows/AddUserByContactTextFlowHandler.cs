@@ -1,4 +1,5 @@
 ﻿using Application.Services.Interfaces;
+using Domain.Enums;
 using Domain.Models;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
@@ -16,13 +17,16 @@ public sealed class AddUserByContactTextFlowHandler : ITelegramTextFlowHandler
     private readonly ITelegramBotClient _bot;
     private readonly IServiceScopeFactory _scopeFactory;
     private readonly TelegramOptions _telegramOptions;
+    private readonly AuditLogger _audit;
 
     public AddUserByContactTextFlowHandler(
         ITelegramBotClient bot,
         IOptions<TelegramOptions> telegramOptions,
-        IServiceScopeFactory scopeFactory)
+        IServiceScopeFactory scopeFactory,
+        AuditLogger audit)
     {
         _bot = bot;
+        _audit = audit;
         _scopeFactory = scopeFactory;
         _telegramOptions = telegramOptions.Value;
     }
@@ -95,6 +99,12 @@ public sealed class AddUserByContactTextFlowHandler : ITelegramTextFlowHandler
             cancellationToken);
 
         store.Clear(chatId);
+
+        if (ok)
+        {
+            var name = $"{contact.FirstName} {contact.LastName}".Trim();
+            await _audit.LogAsync(chatId, AuditAction.UserAdded, $"{name} [{telegramUserId.Value}] по контакту", cancellationToken);
+        }
 
         await _bot.SendMessage(
             chatId: chatId,

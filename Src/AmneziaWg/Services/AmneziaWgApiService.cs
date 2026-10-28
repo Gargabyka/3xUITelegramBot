@@ -94,6 +94,18 @@ public sealed class AmneziaWgApiService : IVpnBackend
 			cancellationToken);
 	}
 
+	public async Task RenameClientAsync(Guid id, string newName, CancellationToken cancellationToken)
+	{
+		var body = JsonSerializer.Serialize(new { name = newName });
+
+		using var response = await SendWithAuthRetryAsync(
+			() => new HttpRequestMessage(HttpMethod.Put, $"api/wireguard/client/{id}/name")
+			{
+				Content = new StringContent(body, Encoding.UTF8, "application/json"),
+			},
+			cancellationToken);
+	}
+
 	/// <summary>
 	/// Отправляет запрос; если сессия истекла (401/403) — авторизуется и повторяет один раз
 	/// </summary>

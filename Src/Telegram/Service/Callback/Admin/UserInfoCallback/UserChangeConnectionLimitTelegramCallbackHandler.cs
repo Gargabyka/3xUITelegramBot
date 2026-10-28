@@ -1,3 +1,4 @@
+using Domain.Enums;
 using Domain.Interfaces;
 using Domain.Interfaces.Repository;
 using JetBrains.Annotations;
@@ -20,13 +21,16 @@ public sealed class UserChangeConnectionLimitTelegramCallbackHandler : TelegramA
 
 	private readonly ITelegramBotClient _bot;
 	private readonly IServiceScopeFactory _scopeFactory;
+	private readonly AuditLogger _audit;
 
 	public UserChangeConnectionLimitTelegramCallbackHandler(
 		ITelegramBotClient telegramBot,
 		IOptions<TelegramOptions> telegramOptions,
-		IServiceScopeFactory scopeFactory)
+		IServiceScopeFactory scopeFactory,
+		AuditLogger audit)
 		: base(telegramBot, telegramOptions, scopeFactory)
 	{
+		_audit = audit;
 		_bot = telegramBot;
 		_scopeFactory = scopeFactory;
 	}
@@ -76,6 +80,12 @@ public sealed class UserChangeConnectionLimitTelegramCallbackHandler : TelegramA
 		{
 			user.MaxConnections = request.Page == -1 ? null : request.Page;
 			await uow.SaveChangesAsync(cancellationToken);
+
+			await _audit.LogAsync(
+				chatId,
+				AuditAction.UserLimitChanged,
+				$"{AuditLogger.Describe(user)} → {(user.MaxConnections.HasValue ? user.MaxConnections.Value.ToString() : "без лимита")}",
+				cancellationToken);
 
 			var statusText = user.MaxConnections.HasValue
 				? $"Лимит соединений установлен: {user.MaxConnections.Value}."

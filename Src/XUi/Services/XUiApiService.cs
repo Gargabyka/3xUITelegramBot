@@ -6,6 +6,7 @@ using System.Text.RegularExpressions;
 using Domain.Interfaces;
 using Domain.Models;
 using Microsoft.Extensions.Options;
+using XUi.Models;
 using XUi.Models.Options;
 
 namespace XUi.Services;
@@ -21,12 +22,14 @@ public class XUiApiService : IVpnBackend
     private readonly HttpClient _httpClient;
     private readonly XUiOptions _options;
     private readonly XUiInboundOptions _inbound;
+    private readonly XUiClientListCache _cache;
 
-    public XUiApiService(HttpClient httpClient, IOptions<XUiOptions> options, XUiInboundOptions inbound)
+    public XUiApiService(HttpClient httpClient, IOptions<XUiOptions> options, XUiInboundOptions inbound, XUiClientListCache cache)
     {
         _httpClient = httpClient;
         _options = options.Value;
         _inbound = inbound;
+        _cache = cache;
         Profile = new VpnProfile(inbound.Profile);
         _httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", _options.ApiToken);
     }
@@ -35,42 +38,24 @@ public class XUiApiService : IVpnBackend
 
     public async Task<VpnServerClient[]> GetClients(CancellationToken cancellationToken)
     {
-        var list = await SendAsync(HttpMethod.Get, "panel/api/clients/list", null, cancellationToken);
-        var lastOnline = await TryGetLastOnlineAsync(cancellationToken);
+        var snapshot = await _cache.GetAsync(FetchSnapshotAsync, cancellationToken);
 
-        var result = new List<VpnServerClient>();
-        foreach (var item in list as JsonArray ?? [])
-        {
-            if (item is not JsonObject client || !IsOnInbound(client))
-            {
-                continue;
-            }
-
-            var email = client["email"]?.GetValue<string>();
-            if (string.IsNullOrEmpty(email) || !Guid.TryParse(client["uuid"]?.ToString(), out var uuid))
-            {
-                continue;
-            }
-
-            var traffic = client["traffic"] as JsonObject;
-            DateTimeOffset? seen = lastOnline.TryGetValue(email, out var ts) && ts > 0
-                ? DateTimeOffset.FromUnixTimeMilliseconds(ts)
-                : null;
-
-            result.Add(new VpnServerClient(
-                Id: uuid,
+        return snapshot.Clients
+            .Where(x => x.InboundIds.Contains(_inbound.Id))
+            .Select(x => new VpnServerClient(
+                Id: x.Id,
                 Profile: _inbound.Profile,
-                Name: email,
-                Enabled: client["enable"]?.GetValue<bool>() ?? true,
+                Name: x.Email,
+                Enabled: x.Enabled,
                 Address: string.Empty,
                 PublicKey: string.Empty,
-                CreatedAt: ReadUnixMillis(client, "createdAt") ?? DateTimeOffset.UtcNow,
-                LatestHandshakeAt: seen,
-                TransferRx: ReadLong(traffic, "up"),
-                TransferTx: ReadLong(traffic, "down")));
-        }
-
-        return result.ToArray();
+                CreatedAt: x.CreatedAt ?? DateTimeOffset.UtcNow,
+                LatestHandshakeAt: snapshot.LastOnline.TryGetValue(x.Email, out var ts) && ts > 0
+                    ? DateTimeOffset.FromUnixTimeMilliseconds(ts)
+                    : null,
+                TransferRx: x.Up,
+                TransferTx: x.Down))
+            .ToArray();
     }
 
     /// <summary>
@@ -93,7 +78,14 @@ public class XUiApiService : IVpnBackend
     public async Task DeleteClientAsync(Guid id, CancellationToken cancellationToken)
     {
         var email = await GetEmailAsync(id, cancellationToken);
-        await SendAsync(HttpMethod.Post, $"panel/api/clients/del/{Uri.EscapeDataString(email)}?keepTraffic=0", null, cancellationToken);
+        try
+        {
+            await SendAsync(HttpMethod.Post, $"panel/api/clients/del/{Uri.EscapeDataString(email)}?keepTraffic=0", null, cancellationToken);
+        }
+        finally
+        {
+            _cache.Invalidate();
+        }
     }
 
     public async Task AddClientAsync(string name, CancellationToken cancellationToken)
@@ -114,7 +106,14 @@ public class XUiApiService : IVpnBackend
             ["inboundIds"] = new JsonArray(_inbound.Id),
         };
 
-        await SendAsync(HttpMethod.Post, "panel/api/clients/add", body, cancellationToken);
+        try
+        {
+            await SendAsync(HttpMethod.Post, "panel/api/clients/add", body, cancellationToken);
+        }
+        finally
+        {
+            _cache.Invalidate();
+        }
     }
 
     public Task EnableClientAsync(Guid id, CancellationToken cancellationToken)
@@ -122,6 +121,41 @@ public class XUiApiService : IVpnBackend
 
     public Task DisableClientAsync(Guid id, CancellationToken cancellationToken)
         => SetEnabledAsync(id, "bulkDisable", cancellationToken);
+
+    /// <summary>
+    /// Меняет email клиента. update/{email} заменяет запись целиком, поэтому отправляем
+    /// полную текущую запись с новым email; UUID и подключение не меняются
+    /// </summary>
+    public async Task RenameClientAsync(Guid id, string newName, CancellationToken cancellationToken)
+    {
+        var email = await GetEmailAsync(id, cancellationToken);
+        var path = Uri.EscapeDataString(email);
+
+        var node = await SendAsync(HttpMethod.Get, $"panel/api/clients/get/{path}", null, cancellationToken);
+        var record = (node as JsonObject)?["client"] as JsonObject
+                     ?? node as JsonObject
+                     ?? throw new InvalidOperationException($"3x-ui не вернул данные клиента {email}");
+
+        var body = (JsonObject)record.DeepClone();
+
+        // В записи панели id — числовой ключ строки, а UUID VLESS лежит в uuid; в теле клиента id — это UUID
+        if (body["uuid"] is JsonValue uuid && uuid.TryGetValue<string>(out var uuidText))
+        {
+            body["id"] = uuidText;
+            body.Remove("uuid");
+        }
+
+        body["email"] = newName;
+
+        try
+        {
+            await SendAsync(HttpMethod.Post, $"panel/api/clients/update/{path}", body, cancellationToken);
+        }
+        finally
+        {
+            _cache.Invalidate();
+        }
+    }
 
     /// <summary>
     /// Подставляет в vless://-ссылку заданный порт (панель отдаёт порт inbound'а,
@@ -148,7 +182,15 @@ public class XUiApiService : IVpnBackend
         var email = await GetEmailAsync(id, cancellationToken);
         var body = new JsonObject { ["emails"] = new JsonArray(email) };
 
-        var result = await SendAsync(HttpMethod.Post, $"panel/api/clients/{action}", body, cancellationToken);
+        JsonNode? result;
+        try
+        {
+            result = await SendAsync(HttpMethod.Post, $"panel/api/clients/{action}", body, cancellationToken);
+        }
+        finally
+        {
+            _cache.Invalidate();
+        }
 
         if (result is JsonObject obj && obj["skipped"] is JsonArray { Count: > 0 } skipped)
         {
@@ -163,8 +205,47 @@ public class XUiApiService : IVpnBackend
                ?? throw new InvalidOperationException($"Клиент {id} не найден в 3x-ui");
     }
 
-    private bool IsOnInbound(JsonObject client)
-        => client["inboundIds"] is JsonArray ids && ids.Any(x => x?.GetValue<int>() == _inbound.Id);
+    /// <summary>
+    /// Загружает клиентов всех inbound'ов панели (кэшируется в <see cref="XUiClientListCache"/>)
+    /// </summary>
+    private async Task<XUiPanelSnapshot> FetchSnapshotAsync(CancellationToken cancellationToken)
+    {
+        var list = await SendAsync(HttpMethod.Get, "panel/api/clients/list", null, cancellationToken);
+        var lastOnline = await TryGetLastOnlineAsync(cancellationToken);
+
+        var clients = new List<XUiPanelClient>();
+        foreach (var item in list as JsonArray ?? [])
+        {
+            if (item is not JsonObject client)
+            {
+                continue;
+            }
+
+            var email = client["email"]?.GetValue<string>();
+            if (string.IsNullOrEmpty(email) || !Guid.TryParse(client["uuid"]?.ToString(), out var uuid))
+            {
+                continue;
+            }
+
+            var inboundIds = (client["inboundIds"] as JsonArray ?? [])
+                .Where(x => x is not null)
+                .Select(x => x!.GetValue<int>())
+                .ToArray();
+
+            var traffic = client["traffic"] as JsonObject;
+
+            clients.Add(new XUiPanelClient(
+                Id: uuid,
+                Email: email,
+                Enabled: client["enable"]?.GetValue<bool>() ?? true,
+                InboundIds: inboundIds,
+                Up: ReadLong(traffic, "up"),
+                Down: ReadLong(traffic, "down"),
+                CreatedAt: ReadUnixMillis(client, "createdAt")));
+        }
+
+        return new XUiPanelSnapshot(clients, lastOnline, DateTime.UtcNow);
+    }
 
     private async Task<Dictionary<string, long>> TryGetLastOnlineAsync(CancellationToken cancellationToken)
     {

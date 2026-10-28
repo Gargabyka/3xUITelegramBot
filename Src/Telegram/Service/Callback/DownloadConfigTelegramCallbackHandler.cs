@@ -21,16 +21,19 @@ public class DownloadConfigTelegramCallbackHandler : TelegramCallbackHandlerBase
     private readonly IVpnApiService _xuiApiService;
     private readonly ITelegramBotClient _telegramBot;
     private readonly IServiceScopeFactory _scopeFactory;
+    private readonly TelegramAccessService _access;
 
     public DownloadConfigTelegramCallbackHandler(
 	    IVpnApiService xuiApiService,
 	    ITelegramBotClient telegramBot,
-	    IServiceScopeFactory scopeFactory)
+	    IServiceScopeFactory scopeFactory,
+	    TelegramAccessService access)
         : base(telegramBot)
     {
         _xuiApiService = xuiApiService;
         _telegramBot = telegramBot;
         _scopeFactory = scopeFactory;
+        _access = access;
     }
 
     public override TelegramCallbackEvent CallbackEvent => TelegramCallbackEvent.DownloadConfig;
@@ -38,6 +41,12 @@ public class DownloadConfigTelegramCallbackHandler : TelegramCallbackHandlerBase
     public override async Task CallbackHandlerAsync(Update update, TelegramRequest request, CancellationToken cancellationToken)
     {
         var (chatId, _, _) = GetCallbackContext(update);
+
+        if (!await _access.CanManagePeerAsync(chatId, request.Id, cancellationToken))
+        {
+	        await DenyAsync(update, "Это соединение вам не принадлежит.", cancellationToken);
+	        return;
+        }
 
         // Тут специально НЕ удаляем исходное сообщение (QR-экран) — пусть остаётся,
         // а конфиг просто прилетит отдельным документом.

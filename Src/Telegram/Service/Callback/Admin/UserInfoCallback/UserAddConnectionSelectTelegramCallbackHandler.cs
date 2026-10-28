@@ -1,4 +1,5 @@
 ﻿using Domain.Entities;
+using Domain.Enums;
 using Domain.Interfaces;
 using Domain.Interfaces.Repository;
 using JetBrains.Annotations;
@@ -18,13 +19,16 @@ public sealed class UserAddConnectionSelectTelegramCallbackHandler : TelegramAdm
 {
 	private readonly ITelegramBotClient _bot;
 	private readonly IServiceScopeFactory _scopeFactory;
+	private readonly AuditLogger _audit;
 
 	public UserAddConnectionSelectTelegramCallbackHandler(
 		ITelegramBotClient telegramBot,
 		IOptions<TelegramOptions> telegramOptions,
-		IServiceScopeFactory scopeFactory)
+		IServiceScopeFactory scopeFactory,
+		AuditLogger audit)
 		: base(telegramBot, telegramOptions, scopeFactory)
 	{
+		_audit = audit;
 		_bot = telegramBot;
 		_scopeFactory = scopeFactory;
 	}
@@ -102,6 +106,8 @@ public sealed class UserAddConnectionSelectTelegramCallbackHandler : TelegramAdm
 		});
 
 		await uow.SaveChangesAsync(cancellationToken);
+
+		await _audit.LogAsync(chatId, AuditAction.ConnectionLinked, $"'{peer.Name}' → {AuditLogger.Describe(user)}", cancellationToken);
 
 		var toUserInfo = new TelegramRequest(
 			Id: request.Id,

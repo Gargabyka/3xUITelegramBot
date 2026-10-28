@@ -1,6 +1,5 @@
-﻿using Domain.Entities;
-using Domain.Interfaces;
-using Domain.Interfaces.Repository;
+﻿using Application.Services;
+using Domain.Enums;
 using JetBrains.Annotations;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
@@ -16,15 +15,18 @@ public sealed class RefreshConnectionsTelegramCallbackHandler : TelegramAdminCal
 {
 	private readonly ITelegramBotClient _telegramBot;
 	private readonly IServiceScopeFactory _scopeFactory;
+	private readonly AuditLogger _audit;
 
 	public RefreshConnectionsTelegramCallbackHandler(
 		ITelegramBotClient telegramBot,
 		IOptions<TelegramOptions> telegramOptions,
-		IServiceScopeFactory scopeFactory)
+		IServiceScopeFactory scopeFactory,
+		AuditLogger audit)
 		: base(telegramBot, telegramOptions, scopeFactory)
 	{
 		_telegramBot = telegramBot;
 		_scopeFactory = scopeFactory;
+		_audit = audit;
 	}
 
 	public override TelegramCallbackEvent CallbackEvent => TelegramCallbackEvent.RefreshConnections;
@@ -50,44 +52,32 @@ public sealed class RefreshConnectionsTelegramCallbackHandler : TelegramAdminCal
 		try
 		{
 			using var scope = _scopeFactory.CreateScope();
+			var syncService = scope.ServiceProvider.GetRequiredService<PeerSyncService>();
 
-			var xuiApiService = scope.ServiceProvider.GetRequiredService<IVpnApiService>();
-			var vpnPeerRepository = scope.ServiceProvider.GetRequiredService<IVpnPeerRepository>();
-			var unitOfWork = scope.ServiceProvider.GetRequiredService<IUnitOfWork>();
+			var result = await syncService.SyncAsync(cancellationToken);
 
-			var clients = await xuiApiService.GetClients(cancellationToken);
+			await _audit.LogAsync(
+				chatId.Value,
+				AuditAction.ConnectionsSynced,
+				$"добавлено {result.Added}, обновлено {result.Updated}, удалено {result.Removed}",
+				cancellationToken);
 
-			// текущие id из БД
-			var existingIds = (await vpnPeerRepository.GetPeersAsync(cancellationToken))
-				.Select(x => x.ClientId)
-				.ToHashSet();
+			var text = $"""
+			            Готово.
+			            Всего на серверах: {result.Total}
+			            Добавлено: {result.Added}
+			            Обновлено: {result.Updated}
+			            Удалено (нет на сервере): {result.Removed}
+			            """;
 
-			// добавляем только новые, чтобы не словить уникальный индекс по ClientId
-			var peersToAdd = clients
-				.Where(x => !existingIds.Contains(x.Id))
-				.Select(x => new VpnPeer
-				{
-					ClientId = x.Id,
-					Name = x.Name,
-					Profile = x.Profile,
-					IsEnabled = x.Enabled,
-					Address = x.Address,
-					PublicKey = x.PublicKey,
-					CreatedAt = DateOnly.FromDateTime(x.CreatedAt.UtcDateTime),
-				})
-				.ToArray();
-
-			if (peersToAdd.Length > 0)
+			if (result.UnavailableProfiles.Length > 0)
 			{
-				vpnPeerRepository.AddRange(peersToAdd);
-				await unitOfWork.SaveChangesAsync(cancellationToken);
+				text += $"\n\n⚠ Не ответили: {string.Join(", ", result.UnavailableProfiles)} — их соединения не трогались.";
 			}
-
-			var skipped = clients.Length - peersToAdd.Length;
 
 			await _telegramBot.SendMessage(
 				chatId: chatId.Value,
-				text: $"Готово.\nВсего на серверах: {clients.Length}\nДобавлено: {peersToAdd.Length}\nПропущено (уже были): {skipped}",
+				text: text,
 				cancellationToken: cancellationToken);
 		}
 		catch (OperationCanceledException)

@@ -21,14 +21,17 @@ public class ListTelegramCallbackHandler : TelegramCallbackHandlerBase
 
     private readonly IVpnApiService _xuiApiService;
     private readonly ITelegramBotClient _telegramBot;
+    private readonly TelegramAccessService _access;
 
     public ListTelegramCallbackHandler(
         ITelegramBotClient telegramBot,
-        IVpnApiService xuiApiService)
+        IVpnApiService xuiApiService,
+        TelegramAccessService access)
         : base(telegramBot)
     {
         _telegramBot = telegramBot;
         _xuiApiService = xuiApiService;
+        _access = access;
     }
 
     public override TelegramCallbackEvent CallbackEvent => TelegramCallbackEvent.List;
@@ -36,6 +39,13 @@ public class ListTelegramCallbackHandler : TelegramCallbackHandlerBase
     public override async Task CallbackHandlerAsync(Update update, TelegramRequest request, CancellationToken cancellationToken)
     {
         var (chatId, _, _) = GetCallbackContext(update);
+
+        // Список всех клиентов сервера — только для админов (кнопка могла остаться у бывшего админа)
+        if (!await _access.IsAdminAsync(chatId, cancellationToken))
+        {
+            await DenyAsync(update, "Доступно только администраторам.", cancellationToken);
+            return;
+        }
 
         // Не захламляем чат: удаляем текущий экран (список/карточку/подтверждение)
         await TryDeleteOriginMessageAsync(update, cancellationToken);

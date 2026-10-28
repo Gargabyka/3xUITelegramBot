@@ -64,6 +64,9 @@ public sealed class VpnApiService : IVpnApiService
 	public async Task DisableClientAsync(Guid id, CancellationToken cancellationToken)
 		=> await (await ResolveAsync(id, cancellationToken)).DisableClientAsync(id, cancellationToken);
 
+	public async Task RenameClientAsync(Guid id, string newName, CancellationToken cancellationToken)
+		=> await (await ResolveAsync(id, cancellationToken)).RenameClientAsync(id, newName, cancellationToken);
+
 	private IVpnBackend GetBackend(VpnProfileType profile)
 		=> _backends.FirstOrDefault(x => x.Profile.Type == profile)
 		   ?? throw new InvalidOperationException($"Профиль подключения {profile.Title()} не настроен");

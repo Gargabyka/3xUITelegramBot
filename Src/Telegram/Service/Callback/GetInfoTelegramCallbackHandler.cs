@@ -27,16 +27,19 @@ public class GetInfoTelegramCallbackHandler : TelegramCallbackHandlerBase
     private readonly IVpnApiService _xuiApiService;
     private readonly ITelegramBotClient _telegramBot;
     private readonly IServiceScopeFactory _scopeFactory;
+    private readonly TelegramAccessService _access;
 
     public GetInfoTelegramCallbackHandler(
         IVpnApiService xuiApiService,
         ITelegramBotClient telegramBot,
-        IServiceScopeFactory scopeFactory)
+        IServiceScopeFactory scopeFactory,
+        TelegramAccessService access)
         : base(telegramBot)
     {
         _xuiApiService = xuiApiService;
         _telegramBot = telegramBot;
         _scopeFactory = scopeFactory;
+        _access = access;
     }
 
     public override TelegramCallbackEvent CallbackEvent => TelegramCallbackEvent.GetFullInfo;
@@ -47,6 +50,12 @@ public class GetInfoTelegramCallbackHandler : TelegramCallbackHandlerBase
 	    CancellationToken cancellationToken)
     {
 	    var (chatId, _, _) = GetCallbackContext(update);
+
+	    if (!await _access.CanManagePeerAsync(chatId, request.Id, cancellationToken))
+	    {
+		    await DenyAsync(update, "Это соединение вам не принадлежит.", cancellationToken);
+		    return;
+	    }
 
 	    var clients = await _xuiApiService.GetClients(cancellationToken);
 	    if (clients is null or { Length: 0 })
@@ -118,12 +127,20 @@ public class GetInfoTelegramCallbackHandler : TelegramCallbackHandlerBase
 		    TelegramCallbackEvent.ConnectionInstruction,
 		    sourceEvent: request.SourceEvent);
 
+	    var renameRequest = WithEvent(
+		    request,
+		    TelegramCallbackEvent.RenameClient,
+		    sourceEvent: request.SourceEvent);
+
 	    var markup = new InlineKeyboardMarkup([
 		    [
 			    InlineKeyboardButton.WithCallbackData(client.Profile == VpnProfileType.AmneziaWg ? "⬇ Скачать конфиг" : "⬇ Скачать ссылку", Encode(downloadRequest))
 		    ],
 		    [
 			    InlineKeyboardButton.WithCallbackData("📖 Инструкция", Encode(instructionRequest))
+		    ],
+		    [
+			    InlineKeyboardButton.WithCallbackData("✏ Переименовать", Encode(renameRequest))
 		    ],
 		    [
 			    InlineKeyboardButton.WithCallbackData(

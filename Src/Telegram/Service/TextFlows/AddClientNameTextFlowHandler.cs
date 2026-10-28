@@ -1,9 +1,11 @@
 using Domain.Entities;
+using Domain.Enums;
 using Domain.Extensions;
 using Domain.Interfaces;
 using Domain.Interfaces.Repository;
 using Domain.Models;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using Telegram.Bot;
 using Telegram.Bot.Types;
 using Telegram.Bot.Types.ReplyMarkups;
@@ -21,17 +23,23 @@ public sealed class AddClientNameTextFlowHandler : ITelegramTextFlowHandler
     private readonly IAddClientStateStore _store;
     private readonly IVpnApiService _xuiApi;
     private readonly IServiceScopeFactory _scopeFactory;
+    private readonly AuditLogger _audit;
+    private readonly ILogger<AddClientNameTextFlowHandler> _logger;
 
     public AddClientNameTextFlowHandler(
         ITelegramBotClient bot,
         IAddClientStateStore store,
         IVpnApiService xuiApi,
-        IServiceScopeFactory scopeFactory)
+        IServiceScopeFactory scopeFactory,
+        AuditLogger audit,
+        ILogger<AddClientNameTextFlowHandler> logger)
     {
+        _audit = audit;
         _bot = bot;
         _store = store;
         _xuiApi = xuiApi;
         _scopeFactory = scopeFactory;
+        _logger = logger;
     }
 
     public async Task<bool> TryHandleAsync(Update update, CancellationToken cancellationToken)
@@ -64,11 +72,11 @@ public sealed class AddClientNameTextFlowHandler : ITelegramTextFlowHandler
 
         var clientName = text;
 
-        if (clientName.Length < 3)
+        if (!ClientNameRules.IsValid(clientName))
         {
             await _bot.SendMessage(
                 chatId: chatId,
-                text: "Имя слишком короткое. Введите другое (минимум 3 символа) или нажмите «Отмена».",
+                text: $"{ClientNameRules.Hint} Введите другое или нажмите «Отмена».",
                 cancellationToken: cancellationToken);
             return true;
         }
@@ -206,6 +214,8 @@ public sealed class AddClientNameTextFlowHandler : ITelegramTextFlowHandler
 
             _store.Clear(chatId);
 
+            await _audit.LogAsync(chatId, AuditAction.ClientCreated, $"'{clientName}' ({profile.Title})", cancellationToken);
+
             var toMyConnections = new TelegramRequest(Guid.Empty, TelegramCallbackEvent.MyConnections, TelegramCallbackEvent.MainMenu);
             var toMenu = new TelegramRequest(Guid.Empty, TelegramCallbackEvent.MainMenu, TelegramCallbackEvent.MainMenu);
 
@@ -222,13 +232,14 @@ public sealed class AddClientNameTextFlowHandler : ITelegramTextFlowHandler
 
             return true;
         }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is not OperationCanceledException)
         {
             _store.Clear(chatId);
+            _logger.LogError(ex, "Не удалось добавить клиента {ClientName} ({Profile})", clientName, profile.Type);
 
             await _bot.SendMessage(
                 chatId: chatId,
-                text: $"Не удалось добавить клиента: {ex.Message}",
+                text: "Не удалось добавить клиента: сервер недоступен или вернул ошибку. Попробуйте позже или обратитесь к администратору.",
                 cancellationToken: cancellationToken);
 
             return true;

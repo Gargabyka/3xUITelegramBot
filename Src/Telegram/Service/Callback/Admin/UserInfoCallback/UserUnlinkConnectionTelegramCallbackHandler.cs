@@ -1,4 +1,5 @@
-﻿using Domain.Interfaces.Repository;
+﻿using Domain.Enums;
+using Domain.Interfaces.Repository;
 using JetBrains.Annotations;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
@@ -16,13 +17,16 @@ public sealed class UserUnlinkConnectionTelegramCallbackHandler : TelegramAdminC
 {
 	private readonly ITelegramBotClient _bot;
 	private readonly IServiceScopeFactory _scopeFactory;
+	private readonly AuditLogger _audit;
 
 	public UserUnlinkConnectionTelegramCallbackHandler(
 		ITelegramBotClient telegramBot,
 		IOptions<TelegramOptions> telegramOptions,
-		IServiceScopeFactory scopeFactory)
+		IServiceScopeFactory scopeFactory,
+		AuditLogger audit)
 		: base(telegramBot, telegramOptions, scopeFactory)
 	{
+		_audit = audit;
 		_bot = telegramBot;
 		_scopeFactory = scopeFactory;
 	}
@@ -59,6 +63,10 @@ public sealed class UserUnlinkConnectionTelegramCallbackHandler : TelegramAdminC
 		}
 
 		var deleted = await vpnUserRepo.RemoveLinkAsync(user.Id, peerId, cancellationToken);
+		if (deleted > 0)
+		{
+			await _audit.LogAsync(chatId, AuditAction.ConnectionUnlinked, $"соединение #{peerId} от {AuditLogger.Describe(user)}", cancellationToken);
+		}
 
 		// Возвращаемся к списку соединений пользователя (страницу восстановить нельзя без доп. поля — вернёмся на 0)
 		var backToConnections = new TelegramRequest(

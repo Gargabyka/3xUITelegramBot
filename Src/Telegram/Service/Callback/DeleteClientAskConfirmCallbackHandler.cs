@@ -14,11 +14,13 @@ namespace Telegram.Service.Callback;
 public class DeleteClientAskConfirmCallbackHandler : TelegramCallbackHandlerBase
 {
     private readonly ITelegramBotClient _telegramBot;
+    private readonly TelegramAccessService _access;
 
-    public DeleteClientAskConfirmCallbackHandler(ITelegramBotClient telegramBot)
+    public DeleteClientAskConfirmCallbackHandler(ITelegramBotClient telegramBot, TelegramAccessService access)
         : base(telegramBot)
     {
         _telegramBot = telegramBot;
+        _access = access;
     }
 
     public override TelegramCallbackEvent CallbackEvent => TelegramCallbackEvent.DeleteClientAskConfirm;
@@ -26,6 +28,12 @@ public class DeleteClientAskConfirmCallbackHandler : TelegramCallbackHandlerBase
     public override async Task CallbackHandlerAsync(Update update, TelegramRequest request, CancellationToken cancellationToken)
     {
         var (chatId, _, _) = GetCallbackContext(update);
+
+        if (!await _access.CanManagePeerAsync(chatId, request.Id, cancellationToken))
+        {
+            await DenyAsync(update, "Это соединение вам не принадлежит.", cancellationToken);
+            return;
+        }
 
         // Удаляем текущий экран (QR), чтобы чат не захламлялся
         await TryDeleteOriginMessageAsync(update, cancellationToken);

@@ -41,7 +41,7 @@ public abstract class TelegramAdminCallbackHandlerBase : TelegramCallbackHandler
 			return true;
 		}
 
-		var scope = _scopeFactory.CreateScope();
+		using var scope = _scopeFactory.CreateScope();
 		var repo = scope.ServiceProvider.GetService<ITelegramUserRepository>();
 		if (repo is null)
 		{

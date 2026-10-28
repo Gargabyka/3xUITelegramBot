@@ -22,6 +22,8 @@ public class AppDbContext : DbContext
 
 	public DbSet<Invite> Invites { get; set; }
 
+	public DbSet<AuditLogEntry> AuditLog { get; set; }
+
 	protected override void OnModelCreating(ModelBuilder modelBuilder)
 	{
 		modelBuilder.ApplyConfigurationsFromAssembly(typeof(AppDbContext).Assembly);

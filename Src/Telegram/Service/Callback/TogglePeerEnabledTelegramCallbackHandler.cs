@@ -1,9 +1,9 @@
+using Domain.Enums;
 using Domain.Interfaces;
 using Domain.Interfaces.Repository;
 using JetBrains.Annotations;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Options;
 using Telegram.Bot;
 using Telegram.Bot.Types;
 using Telegram.Bot.Types.ReplyMarkups;
@@ -21,21 +21,24 @@ public sealed class TogglePeerEnabledTelegramCallbackHandler : TelegramCallbackH
     private readonly ITelegramBotClient _bot;
     private readonly IVpnApiService _xuiApiService;
     private readonly IServiceScopeFactory _scopeFactory;
-    private readonly TelegramOptions _telegramOptions;
+    private readonly TelegramAccessService _access;
+    private readonly AuditLogger _audit;
     private readonly ILogger<TogglePeerEnabledTelegramCallbackHandler> _logger;
 
     public TogglePeerEnabledTelegramCallbackHandler(
         ITelegramBotClient telegramBot,
         IVpnApiService xuiApiService,
-        IOptions<TelegramOptions> telegramOptions,
         IServiceScopeFactory scopeFactory,
+        TelegramAccessService access,
+        AuditLogger audit,
         ILogger<TogglePeerEnabledTelegramCallbackHandler> logger)
         : base(telegramBot)
     {
+        _audit = audit;
         _bot = telegramBot;
         _xuiApiService = xuiApiService;
-        _telegramOptions = telegramOptions.Value;
         _scopeFactory = scopeFactory;
+        _access = access;
         _logger = logger;
     }
 
@@ -44,6 +47,12 @@ public sealed class TogglePeerEnabledTelegramCallbackHandler : TelegramCallbackH
     public override async Task CallbackHandlerAsync(Update update, TelegramRequest request, CancellationToken cancellationToken)
     {
         var (chatId, _, _) = GetCallbackContext(update);
+
+        if (!await _access.CanManagePeerAsync(chatId, request.Id, cancellationToken))
+        {
+            await DenyAsync(update, "Это соединение вам не принадлежит.", cancellationToken);
+            return;
+        }
 
         await TryDeleteOriginMessageAsync(update, cancellationToken);
 
@@ -55,35 +64,14 @@ public sealed class TogglePeerEnabledTelegramCallbackHandler : TelegramCallbackH
 
         using var scope = _scopeFactory.CreateScope();
 
-        if (!_telegramOptions.AdminIds.Contains(chatId))
-        {
-            var telegramUserRepo = scope.ServiceProvider.GetRequiredService<ITelegramUserRepository>();
-            var vpnUserRepo = scope.ServiceProvider.GetRequiredService<IVpnUserRepository>();
-
-            var owner = await telegramUserRepo.GetUserByTelegramIdAsync(chatId, cancellationToken);
-            var ownsThisPeer = owner is not null
-                && (await vpnUserRepo.GetConnectionsByTelegramIdAsync(owner.Id, cancellationToken))
-                    .Any(c => c.Peer.ClientId == request.Id);
-
-            if (!ownsThisPeer)
-            {
-                await _bot.SendMessage(
-                    chatId: chatId,
-                    text: "Это соединение вам не принадлежит.",
-                    cancellationToken: cancellationToken);
-
-                await AnswerAsync(update, cancellationToken);
-                return;
-            }
-        }
-
         // 1) Переключение через 3x-ui API — если тут упадёт, значит реально ничего не поменялось,
         // и пользователю можно честно сказать "не удалось".
         bool wasEnabled;
+        string clientName;
         try
         {
             var clients = await _xuiApiService.GetClients(cancellationToken);
-            var client = clients.SingleOrDefault(x => x.Id == request.Id);
+            var client = clients.FirstOrDefault(x => x.Id == request.Id);
             if (client is null)
             {
                 await _bot.SendMessage(
@@ -98,6 +86,7 @@ public sealed class TogglePeerEnabledTelegramCallbackHandler : TelegramCallbackH
             }
 
             wasEnabled = client.Enabled;
+            clientName = client.Name;
 
             if (wasEnabled)
             {
@@ -142,6 +131,12 @@ public sealed class TogglePeerEnabledTelegramCallbackHandler : TelegramCallbackH
         {
             _logger.LogWarning(ex, "Peer {ClientId} переключён в 3x-ui, но не удалось обновить локальную копию", request.Id);
         }
+
+        await _audit.LogAsync(
+            chatId,
+            wasEnabled ? AuditAction.ClientDisabled : AuditAction.ClientEnabled,
+            $"'{clientName}'",
+            cancellationToken);
 
         var statusText = wasEnabled
             ? "Соединение отключено."

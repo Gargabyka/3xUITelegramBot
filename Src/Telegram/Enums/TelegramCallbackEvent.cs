@@ -67,6 +67,18 @@ public enum TelegramCallbackEvent
     [CallbackCode("in")]
     ConnectionInstruction = 14,
 
+    /// <summary>
+    /// Переименовать соединение (запрос нового имени)
+    /// </summary>
+    [CallbackCode("rn")]
+    RenameClient = 15,
+
+    /// <summary>
+    /// Отменить ожидание ввода (переименование, рассылка)
+    /// </summary>
+    [CallbackCode("cx")]
+    CancelInput = 16,
+
     #region Admin
 
     /// <summary>
@@ -170,6 +182,30 @@ public enum TelegramCallbackEvent
     /// </summary>
     [CallbackCode("ci")]
     CreateInvite = 39,
+
+    /// <summary>
+    /// Рассылка: запрос сообщения
+    /// </summary>
+    [CallbackCode("bc")]
+    Broadcast = 40,
+
+    /// <summary>
+    /// Рассылка: подтверждение отправки
+    /// </summary>
+    [CallbackCode("bs")]
+    BroadcastSend = 41,
+
+    /// <summary>
+    /// Журнал действий (страница в Page)
+    /// </summary>
+    [CallbackCode("al")]
+    AuditLog = 42,
+
+    /// <summary>
+    /// Статистика: кто онлайн и топ по трафику
+    /// </summary>
+    [CallbackCode("st")]
+    Stats = 43,
 
     #endregion
 }

@@ -1,4 +1,5 @@
 ﻿using Domain.Enums;
+using Domain.Extensions;
 using Domain.Interfaces;
 using Domain.Interfaces.Repository;
 using JetBrains.Annotations;
@@ -18,14 +19,17 @@ public sealed class UserChangeRoleTelegramCallbackHandler : TelegramAdminCallbac
 {
 	private readonly ITelegramBotClient _bot;
 	private readonly IServiceScopeFactory _scopeFactory;
+	private readonly AuditLogger _audit;
 	private readonly TelegramOptions _telegramOptions;
 
 	public UserChangeRoleTelegramCallbackHandler(
 		ITelegramBotClient telegramBot,
 		IOptions<TelegramOptions> telegramOptions,
-		IServiceScopeFactory scopeFactory)
+		IServiceScopeFactory scopeFactory,
+		AuditLogger audit)
 		: base(telegramBot, telegramOptions, scopeFactory)
 	{
+		_audit = audit;
 		_bot = telegramBot;
 		_scopeFactory = scopeFactory;
 		_telegramOptions = telegramOptions.Value;
@@ -105,9 +109,11 @@ public sealed class UserChangeRoleTelegramCallbackHandler : TelegramAdminCallbac
 			user.Role = newRole;
 			await uow.SaveChangesAsync(cancellationToken);
 
+			await _audit.LogAsync(chatId, AuditAction.UserRoleChanged, $"{AuditLogger.Describe(user)} → {newRole.GetDescription()}", cancellationToken);
+
 			await _bot.SendMessage(
 				chatId: chatId,
-				text: $"Роль обновлена: {newRole}.",
+				text: $"Роль обновлена: {newRole.GetDescription()}.",
 				replyMarkup: new InlineKeyboardMarkup(
 					InlineKeyboardButton.WithCallbackData("⬅ Назад к пользователю", Encode(backToUserInfo))),
 				cancellationToken: cancellationToken);
