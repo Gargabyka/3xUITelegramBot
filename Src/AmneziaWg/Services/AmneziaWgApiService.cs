@@ -107,6 +107,37 @@ public sealed class AmneziaWgApiService : IVpnBackend
 	}
 
 	/// <summary>
+	/// Как EnsureSuccessStatusCode, но в ошибке — какой запрос упал и что ответил сервер:
+	/// по одному коду (например, 500) причину не понять, а текст ответа amnezia-wg-easy её называет
+	/// </summary>
+	private static async Task EnsureSuccessAsync(HttpResponseMessage response, CancellationToken cancellationToken)
+	{
+		if (response.IsSuccessStatusCode)
+		{
+			return;
+		}
+
+		const int maxBodyLength = 300;
+
+		var body = (await response.Content.ReadAsStringAsync(cancellationToken))
+			.ReplaceLineEndings(" ")
+			.Trim();
+		if (body.Length > maxBodyLength)
+		{
+			body = body[..maxBodyLength] + "…";
+		}
+
+		var request = response.RequestMessage;
+		var message = $"amnezia-wg-easy: {request?.Method} /{request?.RequestUri?.AbsolutePath.TrimStart('/')} → {(int)response.StatusCode} {response.ReasonPhrase}"
+		              + (body.Length > 0 ? $": {body}" : string.Empty);
+
+		var statusCode = response.StatusCode;
+		response.Dispose();
+
+		throw new HttpRequestException(message, null, statusCode);
+	}
+
+	/// <summary>
 	/// Отправляет запрос; если сессия истекла (401/403) — авторизуется и повторяет один раз
 	/// </summary>
 	private async Task<HttpResponseMessage> SendWithAuthRetryAsync(
@@ -122,7 +153,7 @@ public sealed class AmneziaWgApiService : IVpnBackend
 			response = await _httpClient.SendAsync(requestFactory(), cancellationToken);
 		}
 
-		response.EnsureSuccessStatusCode();
+		await EnsureSuccessAsync(response, cancellationToken);
 		return response;
 	}
 
@@ -135,7 +166,8 @@ public sealed class AmneziaWgApiService : IVpnBackend
 			"application/json");
 		request.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
 
-		using var response = await _httpClient.SendAsync(request, cancellationToken);
-		response.EnsureSuccessStatusCode();
+		var response = await _httpClient.SendAsync(request, cancellationToken);
+		await EnsureSuccessAsync(response, cancellationToken);
+		response.Dispose();
 	}
 }

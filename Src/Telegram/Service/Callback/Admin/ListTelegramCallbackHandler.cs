@@ -50,14 +50,23 @@ public class ListTelegramCallbackHandler : TelegramCallbackHandlerBase
         // Не захламляем чат: удаляем текущий экран (список/карточку/подтверждение)
         await TryDeleteOriginMessageAsync(update, cancellationToken);
 
-        var clients = await _xuiApiService.GetClients(cancellationToken);
-        if (clients is null or { Length: 0 })
+        // Статусы, а не просто клиенты: недоступный сервер иначе молча пропадает из списка
+        var statuses = await _xuiApiService.GetStatusAsync(cancellationToken);
+        var clients = statuses
+            .SelectMany(x => x.Clients)
+            .GroupBy(x => x.Id)
+            .Select(x => x.First()) // клиент, привязанный к нескольким inbound'ам, показывается один раз
+            .ToArray();
+
+        var unavailableNote = BuildUnavailableNote(statuses);
+
+        if (clients.Length == 0)
         {
             var backToMenuEmpty = BackTo(TelegramCallbackEvent.AdminPanel, sourceEvent: TelegramCallbackEvent.AdminPanel);
 
             await _telegramBot.SendMessage(
                 chatId: chatId,
-                text: "Не удалось найти клиентов",
+                text: "Не удалось найти клиентов" + unavailableNote,
                 replyMarkup: new InlineKeyboardMarkup(
                     InlineKeyboardButton.WithCallbackData("⬅ Назад", Encode(backToMenuEmpty))),
                 cancellationToken: cancellationToken);
@@ -120,11 +129,23 @@ public class ListTelegramCallbackHandler : TelegramCallbackHandlerBase
 
         await _telegramBot.SendMessage(
             chatId: chatId,
-            text: "Выберите клиента — покажу подробную информацию:",
+            text: "Выберите клиента — покажу подробную информацию:" + unavailableNote,
             replyMarkup: new InlineKeyboardMarkup(rows),
             cancellationToken: cancellationToken);
 
         await AnswerAsync(update, cancellationToken);
+    }
+
+    private static string BuildUnavailableNote(VpnBackendStatus[] statuses)
+    {
+        var unavailable = statuses
+            .Where(x => !x.IsAvailable)
+            .Select(x => $"• {x.Profile.Title}: {x.Error}")
+            .ToArray();
+
+        return unavailable.Length == 0
+            ? string.Empty
+            : $"\n\n⚠ Не ответили — их клиентов нет в списке:\n{string.Join("\n", unavailable)}";
     }
 
     private static List<InlineKeyboardButton[]> BuildClientRows(IEnumerable<VpnServerClient> clients)
