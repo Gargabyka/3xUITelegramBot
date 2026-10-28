@@ -138,7 +138,8 @@ public sealed class AmneziaWgApiService : IVpnBackend
 	}
 
 	/// <summary>
-	/// Отправляет запрос; если сессия истекла (401/403) — авторизуется и повторяет один раз
+	/// Отправляет запрос; если сессии нет или она истекла — авторизуется и повторяет один раз.
+	/// Сессия теряется регулярно: cookie живут в обработчике HttpClient, а фабрика пересоздаёт его каждые пару минут
 	/// </summary>
 	private async Task<HttpResponseMessage> SendWithAuthRetryAsync(
 		Func<HttpRequestMessage> requestFactory,
@@ -146,7 +147,9 @@ public sealed class AmneziaWgApiService : IVpnBackend
 	{
 		var response = await _httpClient.SendAsync(requestFactory(), cancellationToken);
 
-		if (response.StatusCode is HttpStatusCode.Unauthorized or HttpStatusCode.Forbidden)
+		// Часть версий amnezia-wg-easy на запрос без сессии отвечает не 401, а 500 с пустым stack —
+		// поэтому при 500 тоже входим и повторяем: если сервер и правда сломан, повтор вернёт настоящую ошибку
+		if (response.StatusCode is HttpStatusCode.Unauthorized or HttpStatusCode.Forbidden or HttpStatusCode.InternalServerError)
 		{
 			response.Dispose();
 			await AuthenticateAsync(cancellationToken);
