@@ -17,16 +17,18 @@ services:
       XUi__ApiUrl: "${XUI_API_URL:?Задайте XUI_API_URL}"
       # Settings -> Security -> API Token
       XUi__ApiToken: "${XUI_API_TOKEN:?Задайте XUI_API_TOKEN}"
-      # Профили VLESS: ID inbound'а (колонка ID в панели), профиль, при необходимости Port для ссылки/QR
-      XUi__Inbounds__0__Id: "1"
+      # Профили VLESS: ID inbound'а (колонка ID в панели), профиль, при необходимости Port для ссылки/QR.
+      # ID у каждого сервера свои и задаются переменными. Не задан ID — профиля нет в боте
+      # (нужен хотя бы один)
+      XUi__Inbounds__0__Id: "${XUI_INBOUND_RAW_ID:-}"
       XUi__Inbounds__0__Profile: "VlessRaw"
-      XUi__Inbounds__1__Id: "2"
+      XUi__Inbounds__1__Id: "${XUI_INBOUND_XHTTP_ID:-}"
       XUi__Inbounds__1__Profile: "VlessXhttp"
       XUi__Inbounds__1__Flow: ""
-      XUi__Inbounds__2__Id: "3"
+      XUi__Inbounds__2__Id: "${XUI_INBOUND_XHTTP_CDN_ID:-}"
       XUi__Inbounds__2__Profile: "VlessXhttpCdn"
       XUi__Inbounds__2__Flow: ""
-      XUi__Inbounds__2__Port: "443"
+      XUi__Inbounds__2__Port: "${XUI_INBOUND_XHTTP_CDN_PORT:-443}"
       # amnezia-wg-easy (необязательно): веб-интерфейс и пароль (PASSWORD контейнера)
       AmneziaWg__Enabled: "${AMNEZIA_ENABLED:-true}"
       AmneziaWg__ApiUrl: "${AMNEZIA_API_URL:-http://host.docker.internal:51821/}"

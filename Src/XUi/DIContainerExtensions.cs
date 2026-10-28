@@ -40,10 +40,16 @@ public static class DiContainerExtensions
 				return handler;
 			});
 
-		var inbounds = section.GetSection("Inbounds").Get<List<XUiInboundOptions>>() ?? [];
+		// Inbound без Id не используется (например, переменная в docker-compose не задана) — его профиль не показывается
+		var inbounds = section.GetSection("Inbounds")
+			.GetChildren()
+			.Where(x => !string.IsNullOrWhiteSpace(x["Id"]))
+			.Select(x => x.Get<XUiInboundOptions>()!)
+			.ToList();
+
 		if (inbounds.Count == 0)
 		{
-			throw new InvalidOperationException("Не задан ни один профиль VLESS: заполните XUi:Inbounds (Id, Profile).");
+			throw new InvalidOperationException("Не задан ни один профиль VLESS: укажите Id хотя бы одного inbound'а в XUi:Inbounds.");
 		}
 
 		if (inbounds.Any(x => x.Profile == VpnProfileType.AmneziaWg) || inbounds.GroupBy(x => x.Profile).Any(g => g.Count() > 1))

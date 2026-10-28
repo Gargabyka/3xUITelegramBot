@@ -25,8 +25,6 @@ public sealed class XUiOptions
 	/// </summary>
 	public bool AllowInvalidCertificate { get; init; }
 
-	/// <summary>
-	/// Профили подключения: каждый соответствует своему inbound'у панели
-	/// </summary>
-	public List<XUiInboundOptions> Inbounds { get; init; } = [];
+	// Профили подключения (XUi:Inbounds) читаются отдельно при регистрации сервисов:
+	// inbound'ы с пустым Id пропускаются, а привязка пустой строки к int здесь уронила бы все настройки
 }
