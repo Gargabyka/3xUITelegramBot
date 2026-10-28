@@ -24,7 +24,7 @@ public static class VpnProfileTypeExtensions
 		VpnProfileType.VlessRaw => "основной вариант: быстрый и простой. Начните с него.",
 		VpnProfileType.VlessXhttp => "если Raw не подключается или работает нестабильно: другой способ передачи, лучше маскируется.",
 		VpnProfileType.VlessXhttpCdn => "запасной вариант, если блокируют по IP: трафик идёт через CDN. Скорость может быть ниже.",
-		VpnProfileType.AmneziaWg => "VPN на WireGuard с защитой от блокировок. Работает на уровне всей системы, нужно приложение AmneziaVPN.",
+		VpnProfileType.AmneziaWg => "VPN на WireGuard с защитой от блокировок, лучше всего подходит для мобильного интернета. Нужно приложение AmneziaWG.",
 		_ => string.Empty,
 	};
 

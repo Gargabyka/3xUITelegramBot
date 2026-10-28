@@ -129,7 +129,7 @@
 | `AmneziaWg:ApiUrl` | Адрес веб-интерфейса amnezia-wg-easy | — |
 | `AmneziaWg:ApiPassword` | Пароль веб-интерфейса (`PASSWORD` контейнера) | — |
 
-Соединение AmneziaWG выдаётся файлом `amnezia.conf` (импорт в приложение AmneziaWG/AmneziaVPN); в списках и карточках у соединений есть метка протокола (`[VLESS]`, `[AWG]`).
+Соединение AmneziaWG выдаётся файлом `amnezia.conf` (импорт в приложение AmneziaWG, на компьютере — AmneziaVPN). Пользователю этот профиль рекомендуется для мобильного интернета — об этом сказано в подсказке при выборе профиля и в инструкции; в списках и карточках у соединений есть метка протокола (`[VLESS]`, `[AWG]`).
 | `ConnectionStrings:Sqlite` | Строка подключения SQLite | `Data Source=vpn_bot.db` (в Docker — `/data/vpn_bot.db`) |
 | `HostingReminder:Enabled` | Включить напоминания об оплате | `false` |
 | `HostingReminder:LastPaymentDate` | Дата последней оплаты, точка отсчёта | — |

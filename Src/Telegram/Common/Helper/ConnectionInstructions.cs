@@ -23,9 +23,9 @@ public static class ConnectionInstructions
                 📖 Как подключить {profile.Title()}
 
                 1️⃣ Установите приложение:
-                • Android: v2rayNG или Hiddify
-                • iPhone / iPad: Streisand или V2Box
-                • Windows / macOS / Linux: Hiddify
+                • Android: v2rayNG/Hiddify/Happ/OneXray
+                • iPhone / iPad: Streisand/V2Box/Happ/OneXray
+                • Windows / macOS / Linux: Hiddify/v2rayN/Happ
 
                 2️⃣ Добавьте соединение одним из способов:
                 • отсканируйте QR-код с карточки соединения (в приложении: «Добавить» → «Сканировать QR»);
@@ -40,17 +40,19 @@ public static class ConnectionInstructions
     private static string AmneziaWg() => """
                                          📖 Как подключить AmneziaWG
 
-                                         1️⃣ Установите приложение AmneziaVPN (есть для Android, iPhone, Windows, macOS и Linux).
-                                         На Android также подходит AmneziaWG.
+                                         📶 Этот профиль лучше всего работает на мобильном интернете (4G/5G). Если на Wi-Fi соединение нестабильное, попробуйте профиль VLESS.
+
+                                         1️⃣ Установите приложение AmneziaWG (Google Play, App Store).
+                                         На компьютере подойдёт AmneziaVPN.
 
                                          ⚠️ Обычное приложение WireGuard не подойдёт: конфигурация содержит параметры защиты от блокировок, которые оно не понимает.
 
                                          2️⃣ Нажмите «Скачать конфиг» в карточке соединения — придёт файл amnezia.conf.
 
-                                         3️⃣ В приложении выберите «Добавить соединение» → «Файл с настройками» и укажите этот файл
+                                         3️⃣ В приложении нажмите «+» и выберите импорт из файла, указав amnezia.conf
                                          (или отсканируйте QR-код с карточки, если он есть).
 
-                                         4️⃣ Нажмите «Подключиться».
+                                         4️⃣ Включите соединение.
 
                                          Конфигурацию не передавайте другим: она привязана к вашему соединению.
                                          """;

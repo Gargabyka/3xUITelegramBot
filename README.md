@@ -3,7 +3,7 @@
 Закрытый Telegram-бот для раздачи и обслуживания VPN-подключений. Пользователь сам создаёт себе соединение, получает QR-код, ссылку `vless://` или конфиг AmneziaWG и видит свой трафик. Администратор управляет пользователями, лимитами и соединениями прямо из Telegram.
 
 - **VLESS + Reality** через панель [3x-ui](https://github.com/MHSanaei/3x-ui) v3: профили Raw, XHTTP и XHTTP за CDN, каждый — отдельный inbound.
-- **AmneziaWG** через [amnezia-wg-easy](https://github.com/w0rng/amnezia-wg-easy) (необязательно).
+- **AmneziaWG** через [amnezia-wg-easy](https://github.com/w0rng/amnezia-wg-easy) (необязательно) — рекомендуется для мобильного интернета, подключение через приложение AmneziaWG.
 - **.NET 10**, SQLite (EF Core), Telegram long polling, разворачивается в Docker рядом с панелью.
 
 Подробное описание всех экранов, ролей и фоновых процессов — в [FEATURES.md](FEATURES.md).
