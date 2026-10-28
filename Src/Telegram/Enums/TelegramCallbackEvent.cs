@@ -61,6 +61,12 @@ public enum TelegramCallbackEvent
     [CallbackCode("mc")]
     MyConnections = 13,
 
+    /// <summary>
+    /// Инструкция по подключению для соединения
+    /// </summary>
+    [CallbackCode("in")]
+    ConnectionInstruction = 14,
+
     #region Admin
 
     /// <summary>
@@ -152,6 +158,18 @@ public enum TelegramCallbackEvent
     /// </summary>
     [CallbackCode("ul2")]
     UserChangeConnectionLimit = 37,
+
+    /// <summary>
+    /// Выбор профиля подключения при добавлении клиента (индекс профиля в Page)
+    /// </summary>
+    [CallbackCode("as")]
+    AddClientProtocol = 38,
+
+    /// <summary>
+    /// Создать ссылку-приглашение
+    /// </summary>
+    [CallbackCode("ci")]
+    CreateInvite = 39,
 
     #endregion
 }

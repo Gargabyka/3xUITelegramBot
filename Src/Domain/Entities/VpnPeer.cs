@@ -1,4 +1,5 @@
-﻿using Domain.Interfaces;
+﻿using Domain.Enums;
+using Domain.Interfaces;
 using Domain.Models;
 
 namespace Domain.Entities;
@@ -14,7 +15,7 @@ public class VpnPeer : IEntity
 	public int Id { get; init; }
 
 	/// <summary>
-	/// Идентификатор клиента в 3x-ui (UUID VLESS)
+	/// Идентификатор клиента на VPN-сервере (UUID)
 	/// </summary>
 	public Guid ClientId { get; set; }
 
@@ -22,6 +23,11 @@ public class VpnPeer : IEntity
 	/// Имя клиента
 	/// </summary>
 	public string Name { get; set; }
+
+	/// <summary>
+	/// Профиль подключения
+	/// </summary>
+	public VpnProfileType Profile { get; set; }
 
 	/// <summary>
 	/// Признак включения VPN
@@ -46,6 +52,7 @@ public class VpnPeer : IEntity
 	public void Update(VpnClient client)
 	{
 		Name = client.Name;
+		Profile = client.Profile;
 		Address = client.Address;
 		CreatedAt = client.CreatedAt;
 		IsEnabled = client.Enabled;

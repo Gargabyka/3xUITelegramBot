@@ -1,12 +1,13 @@
-﻿using JetBrains.Annotations;
+﻿using Domain.Extensions;
+using Domain.Interfaces;
+using Domain.Models;
+using JetBrains.Annotations;
 using Telegram.Bot;
 using Telegram.Bot.Types;
 using Telegram.Bot.Types.ReplyMarkups;
 using Telegram.Common.Helper;
 using Telegram.Enums;
 using Telegram.Models;
-using XUi.Models;
-using XUi.Services.Interface;
 
 namespace Telegram.Service.Callback.Admin;
 
@@ -18,12 +19,12 @@ public class ListTelegramCallbackHandler : TelegramCallbackHandlerBase
 {
     private const int PageSize = 9;
 
-    private readonly IXUiApiService _xuiApiService;
+    private readonly IVpnApiService _xuiApiService;
     private readonly ITelegramBotClient _telegramBot;
 
     public ListTelegramCallbackHandler(
         ITelegramBotClient telegramBot,
-        IXUiApiService xuiApiService)
+        IVpnApiService xuiApiService)
         : base(telegramBot)
     {
         _telegramBot = telegramBot;
@@ -116,11 +117,11 @@ public class ListTelegramCallbackHandler : TelegramCallbackHandlerBase
         await AnswerAsync(update, cancellationToken);
     }
 
-    private static List<InlineKeyboardButton[]> BuildClientRows(IEnumerable<XUiClient> clients)
+    private static List<InlineKeyboardButton[]> BuildClientRows(IEnumerable<VpnServerClient> clients)
     {
         var buttons = clients
             .Select(client => InlineKeyboardButton.WithCallbackData(
-                text: client.Name,
+                text: $"[{client.Profile.Title()}] {client.Name}",
                 callbackData: TelegramCallbackDataCodec.Encode(
                     new TelegramRequest(
                         Id: client.Id,

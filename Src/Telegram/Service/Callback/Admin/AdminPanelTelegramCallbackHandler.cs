@@ -59,6 +59,11 @@ public sealed class AdminPanelTelegramCallbackHandler : TelegramAdminCallbackHan
 			CallbackEvent: TelegramCallbackEvent.AddUser,
 			SourceEvent: TelegramCallbackEvent.AdminPanel);
 
+		var createInviteRequest = new TelegramRequest(
+			Id: Guid.Empty,
+			CallbackEvent: TelegramCallbackEvent.CreateInvite,
+			SourceEvent: TelegramCallbackEvent.AdminPanel);
+
 		var listUsersRequest = new TelegramRequest(
 			Id: Guid.Empty,
 			CallbackEvent: TelegramCallbackEvent.UserList,
@@ -76,6 +81,9 @@ public sealed class AdminPanelTelegramCallbackHandler : TelegramAdminCallbackHan
 			],
 			[
 				InlineKeyboardButton.WithCallbackData("➕ Добавить пользователя", TelegramCallbackDataCodec.Encode(addUserRequest)),
+			],
+			[
+				InlineKeyboardButton.WithCallbackData("🔗 Пригласить по ссылке", TelegramCallbackDataCodec.Encode(createInviteRequest)),
 			],
 			[
 				InlineKeyboardButton.WithCallbackData("👥 Список пользователей", TelegramCallbackDataCodec.Encode(listUsersRequest)),

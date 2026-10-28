@@ -8,7 +8,6 @@ using Telegram.Bot;
 using Telegram.Bot.Types;
 using Telegram.Enums;
 using Telegram.Models;
-using XUi.Services.Interface;
 
 namespace Telegram.Service.Callback.Admin;
 
@@ -52,11 +51,11 @@ public sealed class RefreshConnectionsTelegramCallbackHandler : TelegramAdminCal
 		{
 			using var scope = _scopeFactory.CreateScope();
 
-			var xuiApiService = scope.ServiceProvider.GetRequiredService<IXUiApiService>();
+			var xuiApiService = scope.ServiceProvider.GetRequiredService<IVpnApiService>();
 			var vpnPeerRepository = scope.ServiceProvider.GetRequiredService<IVpnPeerRepository>();
 			var unitOfWork = scope.ServiceProvider.GetRequiredService<IUnitOfWork>();
 
-			var clients = await xuiApiService.GetClients(cancellationToken) ?? [];
+			var clients = await xuiApiService.GetClients(cancellationToken);
 
 			// текущие id из БД
 			var existingIds = (await vpnPeerRepository.GetPeersAsync(cancellationToken))
@@ -70,6 +69,7 @@ public sealed class RefreshConnectionsTelegramCallbackHandler : TelegramAdminCal
 				{
 					ClientId = x.Id,
 					Name = x.Name,
+					Profile = x.Profile,
 					IsEnabled = x.Enabled,
 					Address = x.Address,
 					PublicKey = x.PublicKey,
@@ -87,7 +87,7 @@ public sealed class RefreshConnectionsTelegramCallbackHandler : TelegramAdminCal
 
 			await _telegramBot.SendMessage(
 				chatId: chatId.Value,
-				text: $"Готово.\nВсего в 3x-ui: {clients.Length}\nДобавлено: {peersToAdd.Length}\nПропущено (уже были): {skipped}",
+				text: $"Готово.\nВсего на серверах: {clients.Length}\nДобавлено: {peersToAdd.Length}\nПропущено (уже были): {skipped}",
 				cancellationToken: cancellationToken);
 		}
 		catch (OperationCanceledException)

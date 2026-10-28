@@ -1,4 +1,7 @@
-﻿using Domain.Interfaces.Repository;
+﻿using Domain.Extensions;
+using Domain.Interfaces;
+using Domain.Interfaces.Repository;
+using Domain.Models;
 using JetBrains.Annotations;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
@@ -8,8 +11,6 @@ using Telegram.Bot.Types.ReplyMarkups;
 using Telegram.Common.Helper;
 using Telegram.Enums;
 using Telegram.Models;
-using XUi.Models;
-using XUi.Services.Interface;
 
 namespace Telegram.Service.Callback.Admin.UserInfoCallback;
 
@@ -19,12 +20,12 @@ public class UserConnectionsCallbackHandler : TelegramAdminCallbackHandlerBase
 	private const int PageSize = 9;
 
 	private readonly ITelegramBotClient _bot;
-	private readonly IXUiApiService _xuiApiService;
+	private readonly IVpnApiService _xuiApiService;
 	private readonly IServiceScopeFactory _scopeFactory;
 
 	public UserConnectionsCallbackHandler(
 		ITelegramBotClient telegramBot,
-		IXUiApiService xuiApiService,
+		IVpnApiService xuiApiService,
 		IOptions<TelegramOptions> telegramOptions,
 		IServiceScopeFactory scopeFactory)
 		: base(telegramBot, telegramOptions, scopeFactory)
@@ -99,10 +100,10 @@ public class UserConnectionsCallbackHandler : TelegramAdminCallbackHandlerBase
 			.ToArray();
 
 		// Трафик берём live из 3x-ui API — если он недоступен, просто не показываем статистику
-		Dictionary<Guid, XUiClient> clientsById = [];
+		Dictionary<Guid, VpnServerClient> clientsById = [];
 		try
 		{
-			var clients = await _xuiApiService.GetClients(cancellationToken) ?? [];
+			var clients = await _xuiApiService.GetClients(cancellationToken);
 			clientsById = clients.ToDictionary(x => x.Id);
 		}
 		catch (Exception)
@@ -188,7 +189,7 @@ public class UserConnectionsCallbackHandler : TelegramAdminCallbackHandlerBase
 		IEnumerable<Domain.Entities.VpnUser> connections,
 		Guid userRequestId,
 		int page,
-		IReadOnlyDictionary<Guid, XUiClient> clientsById)
+		IReadOnlyDictionary<Guid, VpnServerClient> clientsById)
 	{
 		var rows = new List<InlineKeyboardButton[]>();
 
@@ -201,7 +202,7 @@ public class UserConnectionsCallbackHandler : TelegramAdminCallbackHandlerBase
 				: string.Empty;
 
 			var infoBtn = InlineKeyboardButton.WithCallbackData(
-				text: statusIcon + peer.Name,
+				text: $"{statusIcon}[{peer.Profile.Title()}] {peer.Name}",
 				callbackData: TelegramCallbackDataCodec.Encode(
 					new TelegramRequest(
 						Id: peer.ClientId,

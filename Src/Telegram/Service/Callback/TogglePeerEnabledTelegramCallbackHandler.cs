@@ -9,7 +9,6 @@ using Telegram.Bot.Types;
 using Telegram.Bot.Types.ReplyMarkups;
 using Telegram.Enums;
 using Telegram.Models;
-using XUi.Services.Interface;
 
 namespace Telegram.Service.Callback;
 
@@ -20,14 +19,14 @@ namespace Telegram.Service.Callback;
 public sealed class TogglePeerEnabledTelegramCallbackHandler : TelegramCallbackHandlerBase
 {
     private readonly ITelegramBotClient _bot;
-    private readonly IXUiApiService _xuiApiService;
+    private readonly IVpnApiService _xuiApiService;
     private readonly IServiceScopeFactory _scopeFactory;
     private readonly TelegramOptions _telegramOptions;
     private readonly ILogger<TogglePeerEnabledTelegramCallbackHandler> _logger;
 
     public TogglePeerEnabledTelegramCallbackHandler(
         ITelegramBotClient telegramBot,
-        IXUiApiService xuiApiService,
+        IVpnApiService xuiApiService,
         IOptions<TelegramOptions> telegramOptions,
         IServiceScopeFactory scopeFactory,
         ILogger<TogglePeerEnabledTelegramCallbackHandler> logger)
@@ -84,7 +83,7 @@ public sealed class TogglePeerEnabledTelegramCallbackHandler : TelegramCallbackH
         try
         {
             var clients = await _xuiApiService.GetClients(cancellationToken);
-            var client = clients?.SingleOrDefault(x => x.Id == request.Id);
+            var client = clients.SingleOrDefault(x => x.Id == request.Id);
             if (client is null)
             {
                 await _bot.SendMessage(

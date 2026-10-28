@@ -1,6 +1,10 @@
-﻿using System.Text;
+using System.Text;
 using Domain.Entities;
+using Domain.Enums;
+using Domain.Extensions;
+using Domain.Interfaces;
 using Domain.Interfaces.Repository;
+using Domain.Models;
 using JetBrains.Annotations;
 using Microsoft.Extensions.DependencyInjection;
 using QRCoder;
@@ -11,8 +15,6 @@ using Telegram.Bot.Types.ReplyMarkups;
 using Telegram.Common.Helper;
 using Telegram.Enums;
 using Telegram.Models;
-using XUi.Models;
-using XUi.Services.Interface;
 
 namespace Telegram.Service.Callback;
 
@@ -22,12 +24,12 @@ namespace Telegram.Service.Callback;
 [UsedImplicitly]
 public class GetInfoTelegramCallbackHandler : TelegramCallbackHandlerBase
 {
-    private readonly IXUiApiService _xuiApiService;
+    private readonly IVpnApiService _xuiApiService;
     private readonly ITelegramBotClient _telegramBot;
     private readonly IServiceScopeFactory _scopeFactory;
 
     public GetInfoTelegramCallbackHandler(
-        IXUiApiService xuiApiService,
+        IVpnApiService xuiApiService,
         ITelegramBotClient telegramBot,
         IServiceScopeFactory scopeFactory)
         : base(telegramBot)
@@ -73,7 +75,7 @@ public class GetInfoTelegramCallbackHandler : TelegramCallbackHandlerBase
 		    .Replace("\r\n", "\n")
 		    .Replace("\r", "\n");
 
-	    var qrPng = BuildQrPng(configText);
+	    var qrPng = TryBuildQrPng(configText);
 
 	    var trafficSummary = await BuildTrafficSummaryAsync(client.Id, cancellationToken);
 
@@ -111,9 +113,17 @@ public class GetInfoTelegramCallbackHandler : TelegramCallbackHandlerBase
 		    TelegramCallbackEvent.TogglePeerEnabled,
 		    sourceEvent: request.SourceEvent);
 
+	    var instructionRequest = WithEvent(
+		    request,
+		    TelegramCallbackEvent.ConnectionInstruction,
+		    sourceEvent: request.SourceEvent);
+
 	    var markup = new InlineKeyboardMarkup([
 		    [
-			    InlineKeyboardButton.WithCallbackData("⬇ Скачать ссылку", Encode(downloadRequest))
+			    InlineKeyboardButton.WithCallbackData(client.Profile == VpnProfileType.AmneziaWg ? "⬇ Скачать конфиг" : "⬇ Скачать ссылку", Encode(downloadRequest))
+		    ],
+		    [
+			    InlineKeyboardButton.WithCallbackData("📖 Инструкция", Encode(instructionRequest))
 		    ],
 		    [
 			    InlineKeyboardButton.WithCallbackData(
@@ -128,34 +138,68 @@ public class GetInfoTelegramCallbackHandler : TelegramCallbackHandlerBase
 		    ]
 	    ]);
 
-	    await using var ms = new MemoryStream(qrPng, writable: false);
-	    ms.Position = 0;
+	    if (qrPng is null)
+	    {
+		    // Конфигурация слишком большая для QR-кода — отправляем карточку без картинки
+		    await _telegramBot.SendMessage(
+			    chatId: chatId,
+			    text: caption + "\n\nQR-код недоступен: используйте скачивание конфига.",
+			    replyMarkup: markup,
+			    cancellationToken: cancellationToken);
+	    }
+	    else
+	    {
+		    await using var ms = new MemoryStream(qrPng, writable: false);
+		    ms.Position = 0;
 
-	    var inputFile = InputFile.FromStream(ms, fileName: "vpn.png");
+		    var inputFile = InputFile.FromStream(ms, fileName: "vpn.png");
 
-	    await _telegramBot.SendPhoto(
-		    chatId: chatId,
-		    photo: inputFile,
-		    caption: caption,
-		    parseMode: ParseMode.None,
-		    replyMarkup: markup,
-		    cancellationToken: cancellationToken);
+		    await _telegramBot.SendPhoto(
+			    chatId: chatId,
+			    photo: inputFile,
+			    caption: caption,
+			    parseMode: ParseMode.None,
+			    replyMarkup: markup,
+			    cancellationToken: cancellationToken);
+	    }
 
 	    await AnswerAsync(update, cancellationToken);
     }
 
-    private static string BuildClientInfoText(XUiClient client)
+    private static string BuildClientInfoText(VpnServerClient client)
     {
         var lastHandshake = client.LatestHandshakeAt.HasValue
             ? client.LatestHandshakeAt.Value.LocalDateTime.ToString("dd.MM.yyyy HH:mm")
             : "ещё не подключался";
 
         return $"""
+                Профиль: {client.Profile.Title()}
                 Имя клиента: {client.Name}
                 Клиент включен: {(client.Enabled ? "да" : "нет")}
                 Дата создания клиента: {client.CreatedAt:dd.MM.yyyy}
                 Последняя активность: {lastHandshake}
                 """;
+    }
+
+    private static string FormatPeriodLine(string label, VpnTrafficSnapshot[] snapshots)
+    {
+	    var (rx, tx) = TrafficUsageCalculator.ComputeUsage(snapshots);
+	    return $"{label}: {TrafficFormatter.FormatBytes(rx + tx)}";
+    }
+
+    private static byte[]? TryBuildQrPng(string payload)
+    {
+	    try
+	    {
+		    using var gen = new QRCodeGenerator();
+		    using var data = gen.CreateQrCode(payload, QRCodeGenerator.ECCLevel.Q);
+		    using var qr = new PngByteQRCode(data);
+		    return qr.GetGraphic(pixelsPerModule: 8);
+	    }
+	    catch (QRCoder.Exceptions.DataTooLongException)
+	    {
+		    return null;
+	    }
     }
 
     private async Task<string> BuildTrafficSummaryAsync(Guid clientId, CancellationToken cancellationToken)
@@ -184,19 +228,5 @@ public class GetInfoTelegramCallbackHandler : TelegramCallbackHandlerBase
                 {FormatPeriodLine("За последние 30 дней", month)}
                 {FormatPeriodLine("За всё время", all)}
                 """;
-    }
-
-    private static string FormatPeriodLine(string label, VpnTrafficSnapshot[] snapshots)
-    {
-        var (rx, tx) = TrafficUsageCalculator.ComputeUsage(snapshots);
-        return $"{label}: {TrafficFormatter.FormatBytes(rx + tx)}";
-    }
-
-    private static byte[] BuildQrPng(string payload)
-    {
-        using var gen = new QRCodeGenerator();
-        using var data = gen.CreateQrCode(payload, QRCodeGenerator.ECCLevel.Q);
-        using var qr = new PngByteQRCode(data);
-        return qr.GetGraphic(pixelsPerModule: 8);
     }
 }

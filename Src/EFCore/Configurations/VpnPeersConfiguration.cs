@@ -29,6 +29,10 @@ public sealed class VpnPeersConfiguration : IEntityTypeConfiguration<VpnPeer>
 			.HasMaxLength(256)
 			.IsRequired();
 
+		builder.Property(x => x.Profile)
+			.HasConversion<int>()
+			.IsRequired();
+
 		builder.Property(x => x.IsEnabled)
 			.IsRequired();
 

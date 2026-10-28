@@ -2,10 +2,11 @@ using System.Net.Http.Headers;
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Nodes;
+using System.Text.RegularExpressions;
+using Domain.Interfaces;
+using Domain.Models;
 using Microsoft.Extensions.Options;
-using XUi.Models;
 using XUi.Models.Options;
-using XUi.Services.Interface;
 
 namespace XUi.Services;
 
@@ -13,24 +14,31 @@ namespace XUi.Services;
 /// Клиент API панели 3x-ui (v3): клиенты VLESS + Reality, привязанные к одному inbound.
 /// Идентификатор клиента — UUID VLESS, имя — email клиента в 3x-ui.
 /// </summary>
-public class XUiApiService : IXUiApiService
+public class XUiApiService : IVpnBackend
 {
+    private static readonly Regex VlessAuthorityRegex = new(@"^(vless://[^@/?#]+@)(\[[^\]]+\]|[^:/?#]+):\d+", RegexOptions.Compiled | RegexOptions.IgnoreCase);
+
     private readonly HttpClient _httpClient;
     private readonly XUiOptions _options;
+    private readonly XUiInboundOptions _inbound;
 
-    public XUiApiService(HttpClient httpClient, IOptions<XUiOptions> options)
+    public XUiApiService(HttpClient httpClient, IOptions<XUiOptions> options, XUiInboundOptions inbound)
     {
         _httpClient = httpClient;
         _options = options.Value;
+        _inbound = inbound;
+        Profile = new VpnProfile(inbound.Profile);
         _httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", _options.ApiToken);
     }
 
-    public async Task<XUiClient[]?> GetClients(CancellationToken cancellationToken)
+    public VpnProfile Profile { get; }
+
+    public async Task<VpnServerClient[]> GetClients(CancellationToken cancellationToken)
     {
         var list = await SendAsync(HttpMethod.Get, "panel/api/clients/list", null, cancellationToken);
         var lastOnline = await TryGetLastOnlineAsync(cancellationToken);
 
-        var result = new List<XUiClient>();
+        var result = new List<VpnServerClient>();
         foreach (var item in list as JsonArray ?? [])
         {
             if (item is not JsonObject client || !IsOnInbound(client))
@@ -49,8 +57,9 @@ public class XUiApiService : IXUiApiService
                 ? DateTimeOffset.FromUnixTimeMilliseconds(ts)
                 : null;
 
-            result.Add(new XUiClient(
+            result.Add(new VpnServerClient(
                 Id: uuid,
+                Profile: _inbound.Profile,
                 Name: email,
                 Enabled: client["enable"]?.GetValue<bool>() ?? true,
                 Address: string.Empty,
@@ -78,7 +87,7 @@ public class XUiApiService : IXUiApiService
 
         return link is null
             ? throw new InvalidOperationException($"3x-ui не вернул ссылку для клиента {email}")
-            : Encoding.UTF8.GetBytes(link);
+            : Encoding.UTF8.GetBytes(ApplyPort(link, _inbound.Port));
     }
 
     public async Task DeleteClientAsync(Guid id, CancellationToken cancellationToken)
@@ -96,13 +105,13 @@ public class XUiApiService : IXUiApiService
                 ["email"] = name,
                 ["id"] = Guid.NewGuid().ToString(),
                 ["subId"] = Guid.NewGuid().ToString("N")[..16],
-                ["flow"] = _options.Flow,
+                ["flow"] = _inbound.Flow ?? _options.Flow,
                 ["enable"] = true,
                 ["totalGB"] = 0,
                 ["expiryTime"] = 0,
                 ["limitIp"] = 0,
             },
-            ["inboundIds"] = new JsonArray(_options.InboundId),
+            ["inboundIds"] = new JsonArray(_inbound.Id),
         };
 
         await SendAsync(HttpMethod.Post, "panel/api/clients/add", body, cancellationToken);
@@ -113,6 +122,26 @@ public class XUiApiService : IXUiApiService
 
     public Task DisableClientAsync(Guid id, CancellationToken cancellationToken)
         => SetEnabledAsync(id, "bulkDisable", cancellationToken);
+
+    /// <summary>
+    /// Подставляет в vless://-ссылку заданный порт (панель отдаёт порт inbound'а,
+    /// а наружу, например за CDN, клиент подключается на другой)
+    /// </summary>
+    private static string ApplyPort(string link, int? port)
+    {
+	    if (port is null)
+	    {
+		    return link;
+	    }
+
+	    // vless://uuid@host:port?params#remark; host может быть IPv6 в квадратных скобках
+	    return VlessAuthorityRegex.Replace(link, m => $"{m.Groups[1].Value}{m.Groups[2].Value}:{port}", count: 1);
+    }
+
+    private static long ReadLong(JsonObject? obj, string key) => obj?[key]?.GetValue<long>() ?? 0;
+
+    private static DateTimeOffset? ReadUnixMillis(JsonObject obj, string key)
+	    => obj[key]?.GetValue<long>() is > 0 and var ms ? DateTimeOffset.FromUnixTimeMilliseconds(ms) : null;
 
     private async Task SetEnabledAsync(Guid id, string action, CancellationToken cancellationToken)
     {
@@ -129,13 +158,13 @@ public class XUiApiService : IXUiApiService
 
     private async Task<string> GetEmailAsync(Guid id, CancellationToken cancellationToken)
     {
-        var clients = await GetClients(cancellationToken) ?? [];
+        var clients = await GetClients(cancellationToken);
         return clients.FirstOrDefault(x => x.Id == id)?.Name
                ?? throw new InvalidOperationException($"Клиент {id} не найден в 3x-ui");
     }
 
     private bool IsOnInbound(JsonObject client)
-        => client["inboundIds"] is JsonArray ids && ids.Any(x => x?.GetValue<int>() == _options.InboundId);
+        => client["inboundIds"] is JsonArray ids && ids.Any(x => x?.GetValue<int>() == _inbound.Id);
 
     private async Task<Dictionary<string, long>> TryGetLastOnlineAsync(CancellationToken cancellationToken)
     {
@@ -189,9 +218,4 @@ public class XUiApiService : IXUiApiService
 
         return envelope["obj"];
     }
-
-    private static long ReadLong(JsonObject? obj, string key) => obj?[key]?.GetValue<long>() ?? 0;
-
-    private static DateTimeOffset? ReadUnixMillis(JsonObject obj, string key)
-        => obj[key]?.GetValue<long>() is > 0 and var ms ? DateTimeOffset.FromUnixTimeMilliseconds(ms) : null;
 }

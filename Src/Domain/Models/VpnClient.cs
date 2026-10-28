@@ -1,4 +1,6 @@
-﻿namespace Domain.Models;
+﻿using Domain.Enums;
+
+namespace Domain.Models;
 
 /// <summary>
 /// Клиенты 3x-ui
@@ -8,4 +10,4 @@
 /// <param name="Address">Id адрес</param>
 /// <param name="PublicKey">Публичный ключ</param>
 /// <param name="CreatedAt">Дата создания</param>
-public record VpnClient(string Name, bool Enabled, string Address, string PublicKey, DateOnly CreatedAt);
+public record VpnClient(string Name, bool Enabled, string Address, string PublicKey, DateOnly CreatedAt, VpnProfileType Profile);

@@ -1,3 +1,4 @@
+using AmneziaWg;
 using Application;
 using EFCore;
 using Microsoft.EntityFrameworkCore;
@@ -16,6 +17,7 @@ if (builder.Environment.IsDevelopment())
 
 builder.Services.AddTelegramConfiguration(builder.Configuration);
 builder.Services.AddXUiConfiguration(builder.Configuration);
+builder.Services.AddAmneziaWgConfiguration(builder.Configuration);
 builder.Services.AddEfCoreConfiguration(builder.Configuration);
 builder.Services.AddApplicationConfiguration();
 

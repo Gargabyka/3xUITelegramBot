@@ -1,4 +1,7 @@
-﻿using Domain.Interfaces.Repository;
+﻿using Domain.Extensions;
+using Domain.Interfaces;
+using Domain.Interfaces.Repository;
+using Domain.Models;
 using JetBrains.Annotations;
 using Microsoft.Extensions.DependencyInjection;
 using Telegram.Bot;
@@ -7,8 +10,6 @@ using Telegram.Bot.Types.ReplyMarkups;
 using Telegram.Common.Helper;
 using Telegram.Enums;
 using Telegram.Models;
-using XUi.Models;
-using XUi.Services.Interface;
 
 namespace Telegram.Service.Callback;
 
@@ -21,12 +22,12 @@ public sealed class MyConnectionsTelegramCallbackHandler : TelegramCallbackHandl
 	private const int PageSize = 9;
 
 	private readonly ITelegramBotClient _bot;
-	private readonly IXUiApiService _xuiApiService;
+	private readonly IVpnApiService _xuiApiService;
 	private readonly IServiceScopeFactory _scopeFactory;
 
 	public MyConnectionsTelegramCallbackHandler(
 		ITelegramBotClient telegramBot,
-		IXUiApiService xuiApiService,
+		IVpnApiService xuiApiService,
 		IServiceScopeFactory scopeFactory)
 		: base(telegramBot)
 	{
@@ -80,10 +81,10 @@ public sealed class MyConnectionsTelegramCallbackHandler : TelegramCallbackHandl
 			.ToArray();
 
 		// Трафик берём live из 3x-ui API — если он недоступен, просто не показываем статистику
-		Dictionary<Guid, XUiClient> clientsById = [];
+		Dictionary<Guid, VpnServerClient> clientsById = [];
 		try
 		{
-			var clients = await _xuiApiService.GetClients(cancellationToken) ?? [];
+			var clients = await _xuiApiService.GetClients(cancellationToken);
 			clientsById = clients.ToDictionary(x => x.Id);
 		}
 		catch (Exception)
@@ -167,7 +168,7 @@ public sealed class MyConnectionsTelegramCallbackHandler : TelegramCallbackHandl
 	private static List<InlineKeyboardButton[]> BuildPeerRows(
 		IEnumerable<Domain.Entities.VpnUser> connections,
 		int page,
-		IReadOnlyDictionary<Guid, XUiClient> clientsById)
+		IReadOnlyDictionary<Guid, VpnServerClient> clientsById)
 	{
 		var buttons = connections
 			.Select(c =>
@@ -178,7 +179,7 @@ public sealed class MyConnectionsTelegramCallbackHandler : TelegramCallbackHandl
 					: string.Empty;
 
 				return InlineKeyboardButton.WithCallbackData(
-					text: statusIcon + peer.Name,
+					text: $"{statusIcon}[{peer.Profile.Title()}] {peer.Name}",
 					callbackData: TelegramCallbackDataCodec.Encode(
 						new TelegramRequest(
 							Id: peer.ClientId, // Guid клиента 3x-ui

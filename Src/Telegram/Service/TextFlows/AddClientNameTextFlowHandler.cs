@@ -1,4 +1,5 @@
-﻿using Domain.Entities;
+using Domain.Entities;
+using Domain.Extensions;
 using Domain.Interfaces;
 using Domain.Interfaces.Repository;
 using Domain.Models;
@@ -11,7 +12,6 @@ using Telegram.Enums;
 using Telegram.Models;
 using Telegram.Service.Interface;
 using Telegram.Store.Interfaces;
-using XUi.Services.Interface;
 
 namespace Telegram.Service.TextFlows;
 
@@ -19,13 +19,13 @@ public sealed class AddClientNameTextFlowHandler : ITelegramTextFlowHandler
 {
     private readonly ITelegramBotClient _bot;
     private readonly IAddClientStateStore _store;
-    private readonly IXUiApiService _xuiApi;
+    private readonly IVpnApiService _xuiApi;
     private readonly IServiceScopeFactory _scopeFactory;
 
     public AddClientNameTextFlowHandler(
         ITelegramBotClient bot,
         IAddClientStateStore store,
-        IXUiApiService xuiApi,
+        IVpnApiService xuiApi,
         IServiceScopeFactory scopeFactory)
     {
         _bot = bot;
@@ -53,6 +53,11 @@ public sealed class AddClientNameTextFlowHandler : ITelegramTextFlowHandler
 
         // Этот handler активен только когда store "ждёт имя"
         if (!_store.IsWaitingName(chatId))
+        {
+            return false;
+        }
+
+        if (!_store.TryGetProfile(chatId, out var profile))
         {
             return false;
         }
@@ -105,9 +110,9 @@ public sealed class AddClientNameTextFlowHandler : ITelegramTextFlowHandler
 
         try
         {
-            // Проверка дубликатов в 3x-ui
+            // Проверка дубликатов на сервере выбранного протокола
             var clients = await _xuiApi.GetClients(cancellationToken);
-            if (clients is not null && clients.Any(c => string.Equals(c.Name, clientName, StringComparison.OrdinalIgnoreCase)))
+            if (clients.Any(c => c.Profile.IsVless() == profile.Type.IsVless() && string.Equals(c.Name, clientName, StringComparison.OrdinalIgnoreCase)))
             {
                 await _bot.SendMessage(
                     chatId: chatId,
@@ -116,12 +121,12 @@ public sealed class AddClientNameTextFlowHandler : ITelegramTextFlowHandler
                 return true;
             }
 
-            // Создаём в 3x-ui
-            await _xuiApi.AddClientAsync(clientName, cancellationToken);
+            // Создаём на сервере
+            await _xuiApi.AddClientAsync(profile.Type, clientName, cancellationToken);
 
             // Сразу подтягиваем созданного клиента (чтобы получить Guid Id и остальные поля)
-            var updatedClients = await _xuiApi.GetClients(cancellationToken) ?? [];
-            var createdClient = updatedClients.FirstOrDefault(c => string.Equals(c.Name, clientName, StringComparison.OrdinalIgnoreCase));
+            var updatedClients = await _xuiApi.GetClients(cancellationToken);
+            var createdClient = updatedClients.FirstOrDefault(c => c.Profile.IsVless() == profile.Type.IsVless() && string.Equals(c.Name, clientName, StringComparison.OrdinalIgnoreCase));
             if (createdClient is null)
             {
                 _store.Clear(chatId);
@@ -147,7 +152,8 @@ public sealed class AddClientNameTextFlowHandler : ITelegramTextFlowHandler
                     Enabled: createdClient.Enabled,
                     Address: createdClient.Address,
                     PublicKey: createdClient.PublicKey,
-                    CreatedAt: DateOnly.FromDateTime(createdClient.CreatedAt.UtcDateTime));
+                    CreatedAt: DateOnly.FromDateTime(createdClient.CreatedAt.UtcDateTime),
+                    Profile: createdClient.Profile);
 
                 var peerEntity = await peerRepo.GetByClientIdAsync(createdClient.Id, cancellationToken);
                 if (peerEntity is null)
@@ -156,6 +162,7 @@ public sealed class AddClientNameTextFlowHandler : ITelegramTextFlowHandler
                     {
                         ClientId = createdClient.Id,
                         Name = domainClient.Name,
+                        Profile = domainClient.Profile,
                         IsEnabled = domainClient.Enabled,
                         Address = domainClient.Address,
                         PublicKey = domainClient.PublicKey,

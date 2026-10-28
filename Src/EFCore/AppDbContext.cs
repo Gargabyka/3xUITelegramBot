@@ -20,6 +20,8 @@ public class AppDbContext : DbContext
 
 	public DbSet<VpnTrafficSnapshot> VpnTrafficSnapshots { get; set; }
 
+	public DbSet<Invite> Invites { get; set; }
+
 	protected override void OnModelCreating(ModelBuilder modelBuilder)
 	{
 		modelBuilder.ApplyConfigurationsFromAssembly(typeof(AppDbContext).Assembly);

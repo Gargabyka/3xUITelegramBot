@@ -13,8 +13,20 @@ services:
       XUi__ApiUrl: "http://host.docker.internal:2053/<WEB_BASE_PATH>/"
       # Settings -> Security -> API Token
       XUi__ApiToken: "<API_TOKEN_PLACEHOLDER>"
-      # ID inbound'а VLESS + Reality (колонка ID в списке inbound'ов)
-      XUi__InboundId: "1"
+      # Профили VLESS: ID inbound'а (колонка ID в панели), профиль, при необходимости Port для ссылки/QR
+      XUi__Inbounds__0__Id: "1"
+      XUi__Inbounds__0__Profile: "VlessRaw"
+      XUi__Inbounds__1__Id: "2"
+      XUi__Inbounds__1__Profile: "VlessXhttp"
+      XUi__Inbounds__1__Flow: ""
+      XUi__Inbounds__2__Id: "3"
+      XUi__Inbounds__2__Profile: "VlessXhttpCdn"
+      XUi__Inbounds__2__Flow: ""
+      XUi__Inbounds__2__Port: "443"
+      # amnezia-wg-easy (необязательно): веб-интерфейс и пароль (PASSWORD контейнера)
+      AmneziaWg__Enabled: "true"
+      AmneziaWg__ApiUrl: "http://host.docker.internal:51821/"
+      AmneziaWg__ApiPassword: "<AMNEZIA_WEB_PASSWORD_PLACEHOLDER>"
       ConnectionStrings__Sqlite: "Data Source=/data/vpn_bot.db"
 
     extra_hosts:

@@ -5,6 +5,7 @@
     <Project Path="Src/EFCore/EFCore.csproj" />
     <Project Path="Src/Telegram/Telegram.csproj" />
     <Project Path="Src/XUi/XUi.csproj" />
+    <Project Path="Src/AmneziaWg/AmneziaWg.csproj" />
   </Folder>
   <Project Path="Host/Host.csproj" />
 </Solution>

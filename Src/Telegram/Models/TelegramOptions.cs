@@ -20,4 +20,9 @@ public sealed class TelegramOptions
     /// На уже существующих пользователей не влияет — им лимит не выставляется задним числом.
     /// </summary>
     public int? DefaultConnectionLimit { get; init; }
+
+    /// <summary>
+    /// Сколько дней действует ссылка-приглашение
+    /// </summary>
+    public int InviteLifetimeDays { get; init; } = 7;
 }

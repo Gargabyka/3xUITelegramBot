@@ -1,5 +1,7 @@
 ﻿using Application.Repository;
+using Application.Services;
 using Application.Services.Interfaces;
+using Domain.Interfaces;
 using Domain.Interfaces.Repository;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -14,6 +16,9 @@ public static class DiContainerExtensions
 		services.AddScoped<IVpnUserRepository, VpnUserRepository>();
 		services.AddScoped<IHostingReminderStateRepository, HostingReminderStateRepository>();
 		services.AddScoped<IVpnTrafficSnapshotRepository, VpnTrafficSnapshotRepository>();
+		services.AddScoped<IInviteRepository, InviteRepository>();
+		services.AddScoped<InviteService>();
 		services.AddScoped<TelegramUserService>();
+		services.AddTransient<IVpnApiService, VpnApiService>();
 	}
 }

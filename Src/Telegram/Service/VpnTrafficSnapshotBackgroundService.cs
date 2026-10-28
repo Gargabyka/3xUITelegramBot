@@ -4,7 +4,6 @@ using Domain.Interfaces.Repository;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
-using XUi.Services.Interface;
 
 namespace Telegram.Service;
 
@@ -44,7 +43,7 @@ public sealed class VpnTrafficSnapshotBackgroundService : BackgroundService
         try
         {
             using var scope = _scopeFactory.CreateScope();
-            var xuiApiService = scope.ServiceProvider.GetRequiredService<IXUiApiService>();
+            var xuiApiService = scope.ServiceProvider.GetRequiredService<IVpnApiService>();
             var snapshotRepo = scope.ServiceProvider.GetRequiredService<IVpnTrafficSnapshotRepository>();
             var uow = scope.ServiceProvider.GetRequiredService<IUnitOfWork>();
 

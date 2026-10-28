@@ -7,13 +7,13 @@ namespace Telegram.Common.Extensions;
 
 public static class TelegramCallbackEventCodeExtensions
 {
-    private static readonly ConcurrentDictionary<TelegramCallbackEvent, string> _codeByEvent = new();
-    private static readonly Lazy<IReadOnlyDictionary<string, TelegramCallbackEvent>> _eventByCode =
+    private static readonly ConcurrentDictionary<TelegramCallbackEvent, string> CodeByEvent = new();
+    private static readonly Lazy<IReadOnlyDictionary<string, TelegramCallbackEvent>> EventByCode =
         new(BuildEventByCode, isThreadSafe: true);
 
     public static string GetCode(this TelegramCallbackEvent callbackEvent)
     {
-        return _codeByEvent.GetOrAdd(callbackEvent, static e =>
+        return CodeByEvent.GetOrAdd(callbackEvent, static e =>
         {
             var member = typeof(TelegramCallbackEvent)
                 .GetMember(e.ToString(), BindingFlags.Public | BindingFlags.Static)
@@ -38,7 +38,7 @@ public static class TelegramCallbackEventCodeExtensions
             return false;
         }
 
-        return _eventByCode.Value.TryGetValue(code, out callbackEvent);
+        return EventByCode.Value.TryGetValue(code, out callbackEvent);
     }
 
     private static IReadOnlyDictionary<string, TelegramCallbackEvent> BuildEventByCode()

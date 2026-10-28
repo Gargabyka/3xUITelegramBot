@@ -1,11 +1,14 @@
-﻿using Domain.Interfaces.Repository;
+using Domain.Entities;
+using Domain.Enums;
+using Domain.Extensions;
+using Domain.Interfaces;
+using Domain.Interfaces.Repository;
 using JetBrains.Annotations;
 using Microsoft.Extensions.DependencyInjection;
 using Telegram.Bot;
 using Telegram.Bot.Types;
 using Telegram.Enums;
 using Telegram.Models;
-using XUi.Services.Interface;
 
 namespace Telegram.Service.Callback;
 
@@ -15,12 +18,12 @@ namespace Telegram.Service.Callback;
 [UsedImplicitly]
 public class DownloadConfigTelegramCallbackHandler : TelegramCallbackHandlerBase
 {
-    private readonly IXUiApiService _xuiApiService;
+    private readonly IVpnApiService _xuiApiService;
     private readonly ITelegramBotClient _telegramBot;
     private readonly IServiceScopeFactory _scopeFactory;
 
     public DownloadConfigTelegramCallbackHandler(
-	    IXUiApiService xuiApiService,
+	    IVpnApiService xuiApiService,
 	    ITelegramBotClient telegramBot,
 	    IServiceScopeFactory scopeFactory)
         : base(telegramBot)
@@ -38,28 +41,29 @@ public class DownloadConfigTelegramCallbackHandler : TelegramCallbackHandlerBase
 
         // Тут специально НЕ удаляем исходное сообщение (QR-экран) — пусть остаётся,
         // а конфиг просто прилетит отдельным документом.
+        var peer = await GetPeerAsync(request.Id, cancellationToken);
+        var profile = peer?.Profile ?? VpnProfileType.VlessRaw;
+
         var document = await _xuiApiService.DownloadConfigAsync(request.Id, cancellationToken);
         await using var ms = new MemoryStream(document, writable: false);
         ms.Position = 0;
 
-        var inputFile = InputFile.FromStream(ms, fileName: "vless.txt");
-        var configName = await GetConfigName(request.Id, cancellationToken);
+        var inputFile = InputFile.FromStream(ms, fileName: profile.ConfigFileName());
 
         await _telegramBot.SendDocument(
 	        chatId: chatId,
 	        document: inputFile,
-	        caption: $"Ссылка VLESS для импорта в клиент {configName}",
+	        caption: $"{profile.ConfigKind()} для импорта в клиент ({peer?.Name})",
 	        cancellationToken: cancellationToken);
 
         await AnswerAsync(update, cancellationToken);
     }
 
-    private async Task<string?> GetConfigName(Guid clientId, CancellationToken cancellationToken)
+    private async Task<VpnPeer?> GetPeerAsync(Guid clientId, CancellationToken cancellationToken)
     {
-	    var scope = _scopeFactory.CreateScope();
+	    using var scope = _scopeFactory.CreateScope();
 	    var vpnPeerRepository = scope.ServiceProvider.GetRequiredService<IVpnPeerRepository>();
-	    var peer = await vpnPeerRepository.GetByClientIdAsync(clientId, cancellationToken);
 
-	    return $"({peer?.Name})";
+	    return await vpnPeerRepository.GetByClientIdAsync(clientId, cancellationToken);
     }
 }

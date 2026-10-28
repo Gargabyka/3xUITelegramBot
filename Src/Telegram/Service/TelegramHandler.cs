@@ -1,5 +1,9 @@
-﻿using Domain.Interfaces;
+using System.Text.RegularExpressions;
+using Application.Services;
+using Domain.Entities;
+using Domain.Interfaces;
 using Domain.Interfaces.Repository;
+using Domain.Models;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
 using Telegram.Bot;
@@ -14,6 +18,8 @@ namespace Telegram.Service;
 
 public sealed class TelegramHandler : ITelegramHandler
 {
+    private static readonly Regex InviteTokenRegex = new("^[A-Za-z0-9_-]{16,64}$", RegexOptions.Compiled);
+
     private readonly ITelegramBotClient _telegramBot;
     private readonly TelegramOptions _telegramOptions;
     private readonly TelegramUpdateFactory _updateFactory;
@@ -52,6 +58,18 @@ public sealed class TelegramHandler : ITelegramHandler
         }
     }
 
+    private static string? ParseInviteToken(string? text)
+    {
+        const string prefix = "/start inv_";
+        if (text is null || !text.StartsWith(prefix, StringComparison.Ordinal))
+        {
+            return null;
+        }
+
+        var token = text[prefix.Length..].Trim();
+        return InviteTokenRegex.IsMatch(token) ? token : null;
+    }
+
     private async Task HandleUpdateAsync(Update update, CancellationToken cancellationToken)
     {
 	    var message = update.Message;
@@ -64,6 +82,13 @@ public sealed class TelegramHandler : ITelegramHandler
 
 	    if (!await IsAllowedAsync(chatId, cancellationToken))
 	    {
+		    // Незнакомый человек может войти только по ссылке-приглашению
+		    if (await TryAcceptInviteAsync(message, cancellationToken))
+		    {
+			    await _updateFactory.CreateHandler("/start").UpdateHandlerAsync(update, cancellationToken);
+			    return;
+		    }
+
 		    await _telegramBot.SendMessage(chatId, "Доступ запрещён.", cancellationToken: cancellationToken);
 		    return;
 	    }
@@ -127,6 +152,65 @@ public sealed class TelegramHandler : ITelegramHandler
 
         var handler = _callbackFactory.CreateHandler(request);
         await handler.CallbackHandlerAsync(update, request, cancellationToken);
+    }
+
+    /// <summary>
+    /// Обрабатывает переход по ссылке-приглашению (/start inv_токен) от незарегистрированного пользователя
+    /// </summary>
+    /// <returns>True — приглашение принято, пользователь заведён; иначе false (доступ остаётся закрытым)</returns>
+    private async Task<bool> TryAcceptInviteAsync(Message message, CancellationToken cancellationToken)
+    {
+        var token = ParseInviteToken(message.Text);
+        if (token is null || message.From is null)
+        {
+            return false;
+        }
+
+        var from = message.From;
+        var model = new AddUserModel(from.Id, from.FirstName, from.LastName, from.Username);
+
+        Invite? invite;
+        using (var scope = _scopeFactory.CreateScope())
+        {
+            var inviteService = scope.ServiceProvider.GetRequiredService<InviteService>();
+            invite = await inviteService.TryAcceptAsync(token, model, _telegramOptions.DefaultConnectionLimit, cancellationToken);
+        }
+
+        if (invite is null)
+        {
+            await _telegramBot.SendMessage(
+                message.Chat.Id,
+                "Приглашение недействительно: оно уже использовано или срок действия истёк. Попросите администратора прислать новую ссылку.",
+                cancellationToken: cancellationToken);
+            return false;
+        }
+
+        await _telegramBot.SendMessage(
+            message.Chat.Id,
+            "Добро пожаловать! Доступ открыт.",
+            cancellationToken: cancellationToken);
+
+        await NotifyInviterAsync(invite, from, cancellationToken);
+        return true;
+    }
+
+    private async Task NotifyInviterAsync(Invite invite, User joined, CancellationToken cancellationToken)
+    {
+        var name = string.IsNullOrWhiteSpace(joined.Username)
+            ? $"{joined.FirstName} {joined.LastName}".Trim()
+            : $"{joined.FirstName} {joined.LastName}".Trim() + $" (@{joined.Username})";
+
+        try
+        {
+            await _telegramBot.SendMessage(
+                invite.CreatedByTelegramId,
+                $"✅ По вашему приглашению присоединился пользователь: {name}",
+                cancellationToken: cancellationToken);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            // Уведомление необязательно: админ мог заблокировать бота
+        }
     }
 
     private async Task<bool> IsAllowedAsync(long telegramId, CancellationToken cancellationToken)

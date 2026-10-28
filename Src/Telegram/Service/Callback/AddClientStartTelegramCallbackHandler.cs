@@ -1,4 +1,6 @@
-﻿using Domain.Interfaces.Repository;
+using Domain.Extensions;
+using Domain.Interfaces;
+using Domain.Interfaces.Repository;
 using JetBrains.Annotations;
 using Microsoft.Extensions.DependencyInjection;
 using Telegram.Bot;
@@ -19,16 +21,19 @@ public class AddClientStartTelegramCallbackHandler : TelegramCallbackHandlerBase
     private readonly IAddClientStateStore _addClientState;
     private readonly ITelegramBotClient _telegramBot;
     private readonly IServiceScopeFactory _scopeFactory;
+    private readonly IVpnApiService _vpnApi;
 
     public AddClientStartTelegramCallbackHandler(
         ITelegramBotClient telegramBot,
         IAddClientStateStore addClientState,
-        IServiceScopeFactory scopeFactory)
+        IServiceScopeFactory scopeFactory,
+        IVpnApiService vpnApi)
         : base(telegramBot)
     {
         _telegramBot = telegramBot;
         _addClientState = addClientState;
         _scopeFactory = scopeFactory;
+        _vpnApi = vpnApi;
     }
 
     public override TelegramCallbackEvent CallbackEvent => TelegramCallbackEvent.AddClient;
@@ -61,28 +66,47 @@ public class AddClientStartTelegramCallbackHandler : TelegramCallbackHandlerBase
             }
         }
 
-        _addClientState.Begin(chatId);
+        var profiles = _vpnApi.AvailableProfiles;
+        if (profiles.Count == 0)
+        {
+            await _telegramBot.SendMessage(
+                chatId: chatId,
+                text: "Нет доступных вариантов подключения. Обратитесь к администратору.",
+                cancellationToken: cancellationToken);
 
-        var cancelRequest = new TelegramRequest(
-            Id: Guid.Empty,
-            CallbackEvent: TelegramCallbackEvent.AddClientCancel,
-            SourceEvent: TelegramCallbackEvent.MainMenu,
-            Page: 0);
+            await AnswerAsync(update, cancellationToken);
+            return;
+        }
 
-        var markup = new InlineKeyboardMarkup([
-            [
-                InlineKeyboardButton.WithCallbackData("❌ Отмена", Encode(cancelRequest))
-            ]
-        ]);
+        // Единственный сервер — выбирать нечего
+        if (profiles.Count == 1)
+        {
+            await AddClientPrompt.AskNameAsync(_telegramBot, _addClientState, chatId, profiles[0], cancellationToken);
+            await AnswerAsync(update, cancellationToken);
+            return;
+        }
+
+        var rows = profiles
+            .Select((profile, index) => new[]
+            {
+                InlineKeyboardButton.WithCallbackData(
+                    profile.Title,
+                    Encode(new TelegramRequest(
+                        Id: Guid.Empty,
+                        CallbackEvent: TelegramCallbackEvent.AddClientProtocol,
+                        SourceEvent: TelegramCallbackEvent.MainMenu,
+                        Page: index))),
+            })
+            .Append([InlineKeyboardButton.WithCallbackData(
+                "❌ Отмена",
+                Encode(new TelegramRequest(Guid.Empty, TelegramCallbackEvent.AddClientCancel, TelegramCallbackEvent.MainMenu)))])
+            .ToArray();
 
         await _telegramBot.SendMessage(
             chatId: chatId,
-            text: """
-                  Введите имя нового клиента одним сообщением.
-
-                  Пример: iphone_ivan
-                  """,
-            replyMarkup: markup,
+            text: "Выберите, куда создать соединение:\n\n"
+                  + string.Join("\n\n", profiles.Select(p => $"• {p.Title} — {p.Type.Description()}")),
+            replyMarkup: new InlineKeyboardMarkup(rows),
             cancellationToken: cancellationToken);
 
         await AnswerAsync(update, cancellationToken);

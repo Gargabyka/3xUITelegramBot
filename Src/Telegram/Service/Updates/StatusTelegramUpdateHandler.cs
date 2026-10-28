@@ -1,4 +1,5 @@
 using Domain.Enums;
+using Domain.Interfaces;
 using Domain.Interfaces.Repository;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
@@ -7,7 +8,6 @@ using Telegram.Bot.Types;
 using Telegram.Common.Helper;
 using Telegram.Models;
 using Telegram.Service.Interface;
-using XUi.Services.Interface;
 
 namespace Telegram.Service.Updates;
 
@@ -18,14 +18,14 @@ namespace Telegram.Service.Updates;
 public sealed class StatusTelegramUpdateHandler : ITelegramUpdateHandler
 {
 	private readonly ITelegramBotClient _telegramBot;
-	private readonly IXUiApiService _xuiApiService;
+	private readonly IVpnApiService _xuiApiService;
 	private readonly TelegramOptions _telegramOptions;
 	private readonly HostingReminderOptions _hostingReminderOptions;
 	private readonly IServiceScopeFactory _scopeFactory;
 
 	public StatusTelegramUpdateHandler(
 		ITelegramBotClient telegramBot,
-		IXUiApiService xuiApiService,
+		IVpnApiService xuiApiService,
 		IOptions<TelegramOptions> telegramOptions,
 		IOptions<HostingReminderOptions> hostingReminderOptions,
 		IServiceScopeFactory scopeFactory)
@@ -56,24 +56,17 @@ public sealed class StatusTelegramUpdateHandler : ITelegramUpdateHandler
 
 		var usersCount = (await telegramUserRepo.GetUsersAsync(cancellationToken)).Length;
 
-		string xuiStatusLine;
-		try
+		var statuses = await _xuiApiService.GetStatusAsync(cancellationToken);
+		var xuiStatusLine = string.Join("\n\n", statuses.Select(s =>
 		{
-			var clients = await _xuiApiService.GetClients(cancellationToken) ?? [];
-			var enabledCount = clients.Count(x => x.Enabled);
+			if (!s.IsAvailable)
+			{
+				return $"{s.Profile.Title}: ❌ недоступен ({s.Error})";
+			}
 
-			xuiStatusLine = $"""
-			                       3x-ui API: ✅ доступен
-			                       Всего peer'ов: {clients.Length} (включено: {enabledCount}, отключено: {clients.Length - enabledCount})
-			                       """;
-		}
-		catch (Exception ex)
-		{
-			xuiStatusLine = $"""
-			                       3x-ui API: ❌ недоступен ({ex.Message})
-			                       Всего peer'ов: нет данных
-			                       """;
-		}
+			var enabledCount = s.Clients.Count(x => x.Enabled);
+			return $"{s.Profile.Title}: ✅ доступен\nВсего peer'ов: {s.Clients.Length} (включено: {enabledCount}, отключено: {s.Clients.Length - enabledCount})";
+		}));
 
 		var reminderLine = "Напоминания об оплате: выключены в конфиге";
 		if (_hostingReminderOptions.Enabled)

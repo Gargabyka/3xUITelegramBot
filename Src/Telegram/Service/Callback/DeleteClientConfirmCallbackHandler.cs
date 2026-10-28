@@ -7,7 +7,6 @@ using Telegram.Bot.Types;
 using Telegram.Bot.Types.ReplyMarkups;
 using Telegram.Enums;
 using Telegram.Models;
-using XUi.Services.Interface;
 
 namespace Telegram.Service.Callback;
 
@@ -17,13 +16,13 @@ namespace Telegram.Service.Callback;
 [UsedImplicitly]
 public class DeleteClientConfirmCallbackHandler : TelegramCallbackHandlerBase
 {
-    private readonly IXUiApiService _xuiApiService;
+    private readonly IVpnApiService _xuiApiService;
     private readonly ITelegramBotClient _telegramBot;
     private readonly IServiceScopeFactory _scopeFactory;
 
     public DeleteClientConfirmCallbackHandler(
         ITelegramBotClient telegramBot,
-        IXUiApiService xuiApiService,
+        IVpnApiService xuiApiService,
         IServiceScopeFactory scopeFactory)
         : base(telegramBot)
     {
