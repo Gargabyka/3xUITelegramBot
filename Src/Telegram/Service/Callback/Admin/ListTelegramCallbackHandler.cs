@@ -131,7 +131,7 @@ public class ListTelegramCallbackHandler : TelegramCallbackHandlerBase
     {
         var buttons = clients
             .Select(client => InlineKeyboardButton.WithCallbackData(
-                text: $"[{client.Profile.Title()}] {client.Name}",
+                text: $"{(client.Enabled ? "🟢" : "🔴")} [{client.Profile.Title()}] {client.Name}",
                 callbackData: TelegramCallbackDataCodec.Encode(
                     new TelegramRequest(
                         Id: client.Id,

@@ -1,3 +1,4 @@
+using System.Diagnostics.CodeAnalysis;
 using XUi.Models;
 
 namespace XUi.Services;
@@ -62,9 +63,10 @@ public sealed class XUiClientListCache : IDisposable
 
 	public void Dispose() => _lock.Dispose();
 
-	private bool TryGetFresh(out XUiPanelSnapshot snapshot)
+	private bool TryGetFresh([NotNullWhen(true)] out XUiPanelSnapshot? snapshot)
 	{
-		snapshot = _snapshot!;
-		return DateTime.UtcNow - snapshot.FetchedAtUtc < Ttl;
+		// Кэш пуст до первого запроса и после каждого Invalidate()
+		snapshot = _snapshot;
+		return snapshot is not null && DateTime.UtcNow - snapshot.FetchedAtUtc < Ttl;
 	}
 }
