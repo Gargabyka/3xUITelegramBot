@@ -80,10 +80,10 @@ public enum TelegramCallbackEvent
     CancelInput = 16,
 
     /// <summary>
-    /// Ссылка-подписка пользователя: все его VLESS-соединения одной ссылкой
+    /// Ссылка-подписка соединения (QR и ссылка для копирования)
     /// </summary>
     [CallbackCode("sb")]
-    Subscription = 17,
+    ClientSubscription = 17,
 
     #region Admin
 

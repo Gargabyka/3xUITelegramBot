@@ -30,7 +30,7 @@ services:
       XUi__Inbounds__2__Flow: ""
       XUi__Inbounds__2__Port: "${XUI_INBOUND_XHTTP_CDN_PORT:-443}"
       # Ссылка-подписка: адрес сервера подписок 3x-ui и путь без subId (Settings -> Subscription).
-      # Не задан — кнопки «Подписка» в боте нет
+      # Не задан — кнопок подписки в карточке соединения нет
       Subscription__BaseUrl: "${XUI_SUBSCRIPTION_URL:-}"
       # amnezia-wg-easy (необязательно): веб-интерфейс и пароль (PASSWORD контейнера)
       AmneziaWg__Enabled: "${AMNEZIA_ENABLED:-true}"

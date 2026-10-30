@@ -20,18 +20,15 @@ public class StartTelegramUpdateHandler : ITelegramUpdateHandler
     private readonly ITelegramBotClient _telegramBot;
     private readonly TelegramOptions _telegramOptions;
     private readonly IServiceScopeFactory _scopeFactory;
-    private readonly SubscriptionOptions _subscriptionOptions;
 
     public StartTelegramUpdateHandler(
 	    ITelegramBotClient telegramBot,
 	    IOptions<TelegramOptions> telegramOptions,
-	    IServiceScopeFactory scopeFactory,
-	    IOptions<SubscriptionOptions> subscriptionOptions)
+	    IServiceScopeFactory scopeFactory)
     {
 	    _telegramBot = telegramBot;
 	    _scopeFactory = scopeFactory;
 	    _telegramOptions = telegramOptions.Value;
-	    _subscriptionOptions = subscriptionOptions.Value;
     }
 
     public async Task UpdateHandlerAsync(Update update, CancellationToken cancellationToken)
@@ -63,12 +60,6 @@ public class StartTelegramUpdateHandler : ITelegramUpdateHandler
 			    InlineKeyboardButton.WithCallbackData("➕ Добавить клиента", TelegramCallbackDataCodec.Encode(addRequest)),
 		    },
 	    };
-
-	    if (_subscriptionOptions.Enabled)
-	    {
-		    var subscriptionRequest = new TelegramRequest(Guid.Empty, TelegramCallbackEvent.Subscription, TelegramCallbackEvent.MainMenu);
-		    buttons.Add([InlineKeyboardButton.WithCallbackData("🔗 Подписка", TelegramCallbackDataCodec.Encode(subscriptionRequest))]);
-	    }
 
 	    if (await IsAdminAsync(chatId.Value, cancellationToken))
 	    {
