@@ -56,6 +56,12 @@ public class TelegramUser : IEntity
     public int? MaxConnections { get; set; }
 
     /// <summary>
+    /// Идентификатор подписки (subId в 3x-ui): общий у всех VLESS-соединений пользователя,
+    /// по нему сервер подписок отдаёт все его соединения одной ссылкой. null — подписка ещё не создавалась
+    /// </summary>
+    public string? SubscriptionId { get; set; }
+
+    /// <summary>
     /// Добавить пользователя Telegram
     /// </summary>
     /// <param name="userModel">Модель пользователя</param>

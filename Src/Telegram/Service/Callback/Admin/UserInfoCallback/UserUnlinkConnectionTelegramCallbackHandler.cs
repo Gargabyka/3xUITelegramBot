@@ -1,4 +1,6 @@
-﻿using Domain.Enums;
+﻿using Application.Services;
+using Domain.Enums;
+using Domain.Extensions;
 using Domain.Interfaces.Repository;
 using JetBrains.Annotations;
 using Microsoft.Extensions.DependencyInjection;
@@ -65,7 +67,20 @@ public sealed class UserUnlinkConnectionTelegramCallbackHandler : TelegramAdminC
 		var deleted = await vpnUserRepo.RemoveLinkAsync(user.Id, peerId, cancellationToken);
 		if (deleted > 0)
 		{
-			await _audit.LogAsync(chatId, AuditAction.ConnectionUnlinked, $"соединение #{peerId} от {AuditLogger.Describe(user)}", cancellationToken);
+			var peer = (await scope.ServiceProvider.GetRequiredService<IVpnPeerRepository>().GetPeersAsync(cancellationToken))
+				.FirstOrDefault(x => x.Id == peerId);
+
+			// Иначе соединение так и останется в ссылке-подписке бывшего владельца
+			if (peer is not null && peer.Profile.IsVless())
+			{
+				await scope.ServiceProvider.GetRequiredService<SubscriptionService>().DetachAsync(peer.ClientId, cancellationToken);
+			}
+
+			await _audit.LogAsync(
+				chatId,
+				AuditAction.ConnectionUnlinked,
+				$"'{peer?.Name ?? $"#{peerId}"}' от {AuditLogger.Describe(user)}",
+				cancellationToken);
 		}
 
 		// Возвращаемся к списку соединений пользователя (страницу восстановить нельзя без доп. поля — вернёмся на 0)

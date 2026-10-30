@@ -43,5 +43,11 @@ public sealed class TelegramUsersConfiguration : IEntityTypeConfiguration<Telegr
 			.HasDefaultValue(false);
 
 		builder.Property(x => x.MaxConnections);
+
+		builder.Property(x => x.SubscriptionId)
+			.HasMaxLength(32);
+
+		builder.HasIndex(x => x.SubscriptionId)
+			.IsUnique();
 	}
 }

@@ -1,5 +1,4 @@
 using System.Text;
-using Application.Services;
 using Domain.Entities;
 using Domain.Enums;
 using Domain.Extensions;
@@ -8,8 +7,6 @@ using Domain.Interfaces.Repository;
 using Domain.Models;
 using JetBrains.Annotations;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Options;
 using Telegram.Bot;
 using Telegram.Bot.Types;
 using Telegram.Bot.Types.Enums;
@@ -30,24 +27,18 @@ public class GetInfoTelegramCallbackHandler : TelegramCallbackHandlerBase
     private readonly ITelegramBotClient _telegramBot;
     private readonly IServiceScopeFactory _scopeFactory;
     private readonly TelegramAccessService _access;
-    private readonly SubscriptionOptions _subscriptionOptions;
-    private readonly ILogger<GetInfoTelegramCallbackHandler> _logger;
 
     public GetInfoTelegramCallbackHandler(
         IVpnApiService xuiApiService,
         ITelegramBotClient telegramBot,
         IServiceScopeFactory scopeFactory,
-        TelegramAccessService access,
-        IOptions<SubscriptionOptions> subscriptionOptions,
-        ILogger<GetInfoTelegramCallbackHandler> logger)
+        TelegramAccessService access)
         : base(telegramBot)
     {
         _xuiApiService = xuiApiService;
         _telegramBot = telegramBot;
         _scopeFactory = scopeFactory;
         _access = access;
-        _subscriptionOptions = subscriptionOptions.Value;
-        _logger = logger;
     }
 
     public override TelegramCallbackEvent CallbackEvent => TelegramCallbackEvent.GetFullInfo;
@@ -145,17 +136,6 @@ public class GetInfoTelegramCallbackHandler : TelegramCallbackHandlerBase
 		    new[] { InlineKeyboardButton.WithCallbackData(client.Profile == VpnProfileType.AmneziaWg ? "⬇ Скачать конфиг" : "⬇ Скачать ссылку", Encode(downloadRequest)) },
 	    };
 
-	    var subscriptionUrl = await TryGetSubscriptionUrlAsync(client, cancellationToken);
-	    if (subscriptionUrl is not null)
-	    {
-		    var subscriptionRequest = WithEvent(request, TelegramCallbackEvent.ClientSubscription, sourceEvent: request.SourceEvent);
-		    rows.Add(
-		    [
-			    InlineKeyboardButton.WithCallbackData("🔗 Подписка", Encode(subscriptionRequest)),
-			    InlineKeyboardButton.WithUrl("🌐 Открыть подписку", subscriptionUrl),
-		    ]);
-	    }
-
 	    var markup = new InlineKeyboardMarkup([
 		    .. rows,
 		    [
@@ -224,33 +204,6 @@ public class GetInfoTelegramCallbackHandler : TelegramCallbackHandlerBase
     {
 	    var (rx, tx) = TrafficUsageCalculator.ComputeUsage(snapshots);
 	    return $"{label}: {TrafficFormatter.FormatBytes(rx + tx)}";
-    }
-
-    /// <summary>
-    /// Ссылка-подписка соединения (только VLESS и только если задан Subscription:BaseUrl).
-    /// Карточка важнее подписки: при ошибке кнопки подписки просто не показываются
-    /// </summary>
-    private async Task<string?> TryGetSubscriptionUrlAsync(VpnServerClient client, CancellationToken cancellationToken)
-    {
-	    if (!_subscriptionOptions.Enabled || !client.Profile.IsVless())
-	    {
-		    return null;
-	    }
-
-	    try
-	    {
-		    using var scope = _scopeFactory.CreateScope();
-		    var subscriptionId = await scope.ServiceProvider
-			    .GetRequiredService<SubscriptionService>()
-			    .GetClientSubscriptionIdAsync(client.Id, cancellationToken);
-
-		    return subscriptionId is null ? null : _subscriptionOptions.BuildUrl(subscriptionId);
-	    }
-	    catch (Exception ex) when (ex is not OperationCanceledException)
-	    {
-		    _logger.LogWarning(ex, "Не удалось получить ссылку-подписку клиента {ClientId}", client.Id);
-		    return null;
-	    }
     }
 
     private async Task<string> BuildTrafficSummaryAsync(Guid clientId, CancellationToken cancellationToken)

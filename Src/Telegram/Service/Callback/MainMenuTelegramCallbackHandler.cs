@@ -20,16 +20,19 @@ public class MainMenuTelegramCallbackHandler : TelegramCallbackHandlerBase
     private readonly ITelegramBotClient _telegramBot;
     private readonly TelegramOptions _telegramOptions;
     private readonly IServiceScopeFactory _scopeFactory;
+    private readonly SubscriptionOptions _subscriptionOptions;
 
     public MainMenuTelegramCallbackHandler(
 	    ITelegramBotClient telegramBot,
 	    IOptions<TelegramOptions> telegramOptions,
-	    IServiceScopeFactory scopeFactory)
+	    IServiceScopeFactory scopeFactory,
+	    IOptions<SubscriptionOptions> subscriptionOptions)
         : base(telegramBot)
     {
 	    _telegramBot = telegramBot;
 	    _telegramOptions = telegramOptions.Value;
 	    _scopeFactory = scopeFactory;
+	    _subscriptionOptions = subscriptionOptions.Value;
     }
 
     public override TelegramCallbackEvent CallbackEvent => TelegramCallbackEvent.MainMenu;
@@ -61,6 +64,12 @@ public class MainMenuTelegramCallbackHandler : TelegramCallbackHandlerBase
 			    InlineKeyboardButton.WithCallbackData("➕ Добавить соединение", Encode(addRequest)),
 		    },
 	    };
+
+	    if (_subscriptionOptions.Enabled)
+	    {
+		    var subscriptionRequest = new TelegramRequest(Guid.Empty, TelegramCallbackEvent.Subscription, TelegramCallbackEvent.MainMenu);
+		    buttons.Add([InlineKeyboardButton.WithCallbackData("🔗 Подписка", Encode(subscriptionRequest))]);
+	    }
 
 	    if (await IsAdminAsync(chatId, cancellationToken))
         {

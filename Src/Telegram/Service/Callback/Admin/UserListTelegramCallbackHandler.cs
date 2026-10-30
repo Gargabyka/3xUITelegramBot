@@ -14,7 +14,8 @@ namespace Telegram.Service.Callback.Admin;
 [UsedImplicitly]
 public sealed class UserListTelegramCallbackHandler : TelegramAdminCallbackHandlerBase
 {
-    private const int PageSize = 9;
+    // Кнопки по 2 в ряд — чётное число, чтобы последний ряд был полным
+    private const int PageSize = 10;
 
     private readonly ITelegramBotClient _bot;
     private readonly IServiceScopeFactory _scopeFactory;

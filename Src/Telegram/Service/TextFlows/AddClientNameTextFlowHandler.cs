@@ -1,3 +1,4 @@
+using Application.Services;
 using Domain.Entities;
 using Domain.Enums;
 using Domain.Extensions;
@@ -215,6 +216,15 @@ public sealed class AddClientNameTextFlowHandler : ITelegramTextFlowHandler
             _store.Clear(chatId);
 
             await _audit.LogAsync(chatId, AuditAction.ClientCreated, $"'{clientName}' ({profile.Title})", cancellationToken);
+
+            // Новое VLESS-соединение сразу появляется в ссылке-подписке пользователя
+            if (profile.Type.IsVless())
+            {
+                using var subscriptionScope = _scopeFactory.CreateScope();
+                await subscriptionScope.ServiceProvider
+                    .GetRequiredService<SubscriptionService>()
+                    .AttachAsync(chatId, createdClient.Id, cancellationToken);
+            }
 
             var toMyConnections = new TelegramRequest(Guid.Empty, TelegramCallbackEvent.MyConnections, TelegramCallbackEvent.MainMenu);
             var toMenu = new TelegramRequest(Guid.Empty, TelegramCallbackEvent.MainMenu, TelegramCallbackEvent.MainMenu);
