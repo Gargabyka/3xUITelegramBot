@@ -1,5 +1,7 @@
-﻿using Domain.Entities;
+﻿using Application.Services;
+using Domain.Entities;
 using Domain.Enums;
+using Domain.Extensions;
 using Domain.Interfaces;
 using Domain.Interfaces.Repository;
 using JetBrains.Annotations;
@@ -108,6 +110,12 @@ public sealed class UserAddConnectionSelectTelegramCallbackHandler : TelegramAdm
 		await uow.SaveChangesAsync(cancellationToken);
 
 		await _audit.LogAsync(chatId, AuditAction.ConnectionLinked, $"'{peer.Name}' → {AuditLogger.Describe(user)}", cancellationToken);
+
+		// Привязанное соединение сразу появляется в ссылке-подписке пользователя
+		if (peer.Profile.IsVless())
+		{
+			await scope.ServiceProvider.GetRequiredService<SubscriptionService>().SyncAsync(targetTelegramId, cancellationToken);
+		}
 
 		var toUserInfo = new TelegramRequest(
 			Id: request.Id,

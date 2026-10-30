@@ -13,6 +13,11 @@ public interface IVpnBackend
 	public VpnProfile Profile { get; }
 
 	/// <summary>
+	/// Сервер отдаёт клиентов по ссылке-подписке (subId)
+	/// </summary>
+	public bool SupportsSubscription { get; }
+
+	/// <summary>
 	/// Получить клиентов сервера
 	/// </summary>
 	public Task<VpnServerClient[]> GetClients(CancellationToken cancellationToken);
@@ -30,7 +35,10 @@ public interface IVpnBackend
 	/// <summary>
 	/// Добавить клиента
 	/// </summary>
-	public Task AddClientAsync(string name, CancellationToken cancellationToken);
+	/// <param name="name">Имя клиента</param>
+	/// <param name="subscriptionId">Подписка, в которую попадёт клиент (null — своя случайная); сервер без подписок её игнорирует</param>
+	/// <param name="cancellationToken">Токен отмены</param>
+	public Task AddClientAsync(string name, string? subscriptionId, CancellationToken cancellationToken);
 
 	/// <summary>
 	/// Включить клиента
@@ -46,4 +54,9 @@ public interface IVpnBackend
 	/// Переименовать клиента (ключи и подключение не меняются)
 	/// </summary>
 	public Task RenameClientAsync(Guid id, string newName, CancellationToken cancellationToken);
+
+	/// <summary>
+	/// Перенести клиента в подписку (сменить subId). Ничего не делает, если клиент уже в ней
+	/// </summary>
+	public Task SetSubscriptionIdAsync(Guid id, string subscriptionId, CancellationToken cancellationToken);
 }

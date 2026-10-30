@@ -1,4 +1,5 @@
-﻿using Domain.Enums;
+﻿using Application.Services;
+using Domain.Enums;
 using Domain.Interfaces;
 using Domain.Interfaces.Repository;
 using JetBrains.Annotations;
@@ -90,6 +91,9 @@ public sealed class UserDeleteConfirmTelegramCallbackHandler : TelegramAdminCall
 		}
 
 		var described = AuditLogger.Describe(user);
+
+		// До удаления, пока видны привязки: иначе ссылка-подписка удалённого продолжит отдавать его соединения
+		await scope.ServiceProvider.GetRequiredService<SubscriptionService>().DetachAllAsync(telegramId, cancellationToken);
 
 		repo.Remove(user);
 		await uow.SaveChangesAsync(cancellationToken);

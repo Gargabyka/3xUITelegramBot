@@ -21,6 +21,7 @@ public static class DiContainerExtensions
 		services.AddScoped<AuditLogService>();
 		services.AddScoped<InviteService>();
 		services.AddScoped<PeerSyncService>();
+		services.AddScoped<SubscriptionService>();
 		services.AddScoped<TelegramUserService>();
 		services.AddTransient<IVpnApiService, VpnApiService>();
 	}

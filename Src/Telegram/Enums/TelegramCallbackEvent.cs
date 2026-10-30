@@ -79,6 +79,12 @@ public enum TelegramCallbackEvent
     [CallbackCode("cx")]
     CancelInput = 16,
 
+    /// <summary>
+    /// Ссылка-подписка пользователя
+    /// </summary>
+    [CallbackCode("sb")]
+    Subscription = 17,
+
     #region Admin
 
     /// <summary>

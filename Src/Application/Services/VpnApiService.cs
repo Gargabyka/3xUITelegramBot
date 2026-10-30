@@ -55,8 +55,8 @@ public sealed class VpnApiService : IVpnApiService
 	public async Task DeleteClientAsync(Guid id, CancellationToken cancellationToken)
 		=> await (await ResolveAsync(id, cancellationToken)).DeleteClientAsync(id, cancellationToken);
 
-	public Task AddClientAsync(VpnProfileType profile, string name, CancellationToken cancellationToken)
-		=> GetBackend(profile).AddClientAsync(name, cancellationToken);
+	public Task AddClientAsync(VpnProfileType profile, string name, string? subscriptionId, CancellationToken cancellationToken)
+		=> GetBackend(profile).AddClientAsync(name, subscriptionId, cancellationToken);
 
 	public async Task EnableClientAsync(Guid id, CancellationToken cancellationToken)
 		=> await (await ResolveAsync(id, cancellationToken)).EnableClientAsync(id, cancellationToken);
@@ -66,6 +66,15 @@ public sealed class VpnApiService : IVpnApiService
 
 	public async Task RenameClientAsync(Guid id, string newName, CancellationToken cancellationToken)
 		=> await (await ResolveAsync(id, cancellationToken)).RenameClientAsync(id, newName, cancellationToken);
+
+	public async Task SetSubscriptionIdAsync(Guid id, string subscriptionId, CancellationToken cancellationToken)
+	{
+		var backend = await ResolveAsync(id, cancellationToken);
+		if (backend.SupportsSubscription)
+		{
+			await backend.SetSubscriptionIdAsync(id, subscriptionId, cancellationToken);
+		}
+	}
 
 	private IVpnBackend GetBackend(VpnProfileType profile)
 		=> _backends.FirstOrDefault(x => x.Profile.Type == profile)

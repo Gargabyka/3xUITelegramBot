@@ -28,6 +28,8 @@ public sealed class AmneziaWgApiService : IVpnBackend
 
 	public VpnProfile Profile { get; } = new(VpnProfileType.AmneziaWg);
 
+	public bool SupportsSubscription => false;
+
 	public async Task<VpnServerClient[]> GetClients(CancellationToken cancellationToken)
 	{
 		using var response = await SendWithAuthRetryAsync(
@@ -68,7 +70,11 @@ public sealed class AmneziaWgApiService : IVpnBackend
 			cancellationToken);
 	}
 
-	public async Task AddClientAsync(string name, CancellationToken cancellationToken)
+	// У amnezia-wg-easy нет подписок: соединение выдаётся только файлом конфигурации
+	public Task SetSubscriptionIdAsync(Guid id, string subscriptionId, CancellationToken cancellationToken)
+		=> Task.CompletedTask;
+
+	public async Task AddClientAsync(string name, string? subscriptionId, CancellationToken cancellationToken)
 	{
 		var body = JsonSerializer.Serialize(new { name });
 

@@ -130,6 +130,10 @@ namespace EFCore.Migrations
                     b.Property<int>("Role")
                         .HasColumnType("INTEGER");
 
+                    b.Property<string>("SubscriptionId")
+                        .HasMaxLength(32)
+                        .HasColumnType("TEXT");
+
                     b.Property<long>("TelegramId")
                         .HasColumnType("INTEGER");
 
@@ -138,6 +142,9 @@ namespace EFCore.Migrations
                         .HasColumnType("TEXT");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("SubscriptionId")
+                        .IsUnique();
 
                     b.HasIndex("TelegramId")
                         .IsUnique();

@@ -36,6 +36,8 @@ public class XUiApiService : IVpnBackend
 
     public VpnProfile Profile { get; }
 
+    public bool SupportsSubscription => true;
+
     public async Task<VpnServerClient[]> GetClients(CancellationToken cancellationToken)
     {
         var snapshot = await _cache.GetAsync(FetchSnapshotAsync, cancellationToken);
@@ -88,7 +90,7 @@ public class XUiApiService : IVpnBackend
         }
     }
 
-    public async Task AddClientAsync(string name, CancellationToken cancellationToken)
+    public async Task AddClientAsync(string name, string? subscriptionId, CancellationToken cancellationToken)
     {
         var body = new JsonObject
         {
@@ -96,7 +98,7 @@ public class XUiApiService : IVpnBackend
             {
                 ["email"] = name,
                 ["id"] = Guid.NewGuid().ToString(),
-                ["subId"] = Guid.NewGuid().ToString("N")[..16],
+                ["subId"] = subscriptionId ?? Guid.NewGuid().ToString("N")[..16],
                 ["flow"] = _inbound.Flow ?? _options.Flow,
                 ["enable"] = true,
                 ["totalGB"] = 0,
@@ -123,39 +125,35 @@ public class XUiApiService : IVpnBackend
         => SetEnabledAsync(id, "bulkDisable", cancellationToken);
 
     /// <summary>
-    /// Меняет email клиента. update/{email} заменяет запись целиком, поэтому отправляем
-    /// полную текущую запись с новым email; UUID и подключение не меняются
+    /// Меняет email клиента; UUID и подключение не меняются
     /// </summary>
-    public async Task RenameClientAsync(Guid id, string newName, CancellationToken cancellationToken)
-    {
-        var email = await GetEmailAsync(id, cancellationToken);
-        var path = Uri.EscapeDataString(email);
+    public Task RenameClientAsync(Guid id, string newName, CancellationToken cancellationToken)
+        => UpdateClientRecordAsync(
+            id,
+            record =>
+            {
+                record["email"] = newName;
+                return true;
+            },
+            cancellationToken);
 
-        var node = await SendAsync(HttpMethod.Get, $"panel/api/clients/get/{path}", null, cancellationToken);
-        var record = (node as JsonObject)?["client"] as JsonObject
-                     ?? node as JsonObject
-                     ?? throw new InvalidOperationException($"3x-ui не вернул данные клиента {email}");
+    /// <summary>
+    /// Меняет subId клиента: сервер подписок 3x-ui отдаёт по ссылке всех клиентов с этим subId
+    /// </summary>
+    public Task SetSubscriptionIdAsync(Guid id, string subscriptionId, CancellationToken cancellationToken)
+        => UpdateClientRecordAsync(
+            id,
+            record =>
+            {
+                if (record["subId"] is JsonValue current && current.TryGetValue<string>(out var currentId) && currentId == subscriptionId)
+                {
+                    return false;
+                }
 
-        var body = (JsonObject)record.DeepClone();
-
-        // В записи панели id — числовой ключ строки, а UUID VLESS лежит в uuid; в теле клиента id — это UUID
-        if (body["uuid"] is JsonValue uuid && uuid.TryGetValue<string>(out var uuidText))
-        {
-            body["id"] = uuidText;
-            body.Remove("uuid");
-        }
-
-        body["email"] = newName;
-
-        try
-        {
-            await SendAsync(HttpMethod.Post, $"panel/api/clients/update/{path}", body, cancellationToken);
-        }
-        finally
-        {
-            _cache.Invalidate();
-        }
-    }
+                record["subId"] = subscriptionId;
+                return true;
+            },
+            cancellationToken);
 
     /// <summary>
     /// Подставляет в vless://-ссылку заданный порт (панель отдаёт порт inbound'а,
@@ -195,6 +193,47 @@ public class XUiApiService : IVpnBackend
         if (result is JsonObject obj && obj["skipped"] is JsonArray { Count: > 0 } skipped)
         {
             throw new InvalidOperationException($"3x-ui не изменил клиента {email}: {skipped[0]?["reason"]}");
+        }
+    }
+
+    /// <summary>
+    /// Изменяет запись клиента. update/{email} заменяет запись целиком, поэтому берём полную текущую запись,
+    /// меняем нужные поля и отправляем её обратно
+    /// </summary>
+    /// <param name="id">UUID клиента</param>
+    /// <param name="modify">Изменяет запись; false — менять нечего, запрос не отправляется</param>
+    /// <param name="cancellationToken">Токен отмены</param>
+    private async Task UpdateClientRecordAsync(Guid id, Func<JsonObject, bool> modify, CancellationToken cancellationToken)
+    {
+        var email = await GetEmailAsync(id, cancellationToken);
+        var path = Uri.EscapeDataString(email);
+
+        var node = await SendAsync(HttpMethod.Get, $"panel/api/clients/get/{path}", null, cancellationToken);
+        var record = (node as JsonObject)?["client"] as JsonObject
+                     ?? node as JsonObject
+                     ?? throw new InvalidOperationException($"3x-ui не вернул данные клиента {email}");
+
+        var body = (JsonObject)record.DeepClone();
+
+        // В записи панели id — числовой ключ строки, а UUID VLESS лежит в uuid; в теле клиента id — это UUID
+        if (body["uuid"] is JsonValue uuid && uuid.TryGetValue<string>(out var uuidText))
+        {
+            body["id"] = uuidText;
+            body.Remove("uuid");
+        }
+
+        if (!modify(body))
+        {
+            return;
+        }
+
+        try
+        {
+            await SendAsync(HttpMethod.Post, $"panel/api/clients/update/{path}", body, cancellationToken);
+        }
+        finally
+        {
+            _cache.Invalidate();
         }
     }
 

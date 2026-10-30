@@ -36,7 +36,7 @@ public interface IVpnApiService
 	/// <summary>
 	/// Добавить клиента в выбранный профиль
 	/// </summary>
-	public Task AddClientAsync(VpnProfileType profile, string name, CancellationToken cancellationToken);
+	public Task AddClientAsync(VpnProfileType profile, string name, string? subscriptionId, CancellationToken cancellationToken);
 
 	/// <summary>
 	/// Включить клиента (сервер определяется по идентификатору)
@@ -52,4 +52,9 @@ public interface IVpnApiService
 	/// Переименовать клиента (сервер определяется по идентификатору)
 	/// </summary>
 	public Task RenameClientAsync(Guid id, string newName, CancellationToken cancellationToken);
+
+	/// <summary>
+	/// Перенести клиента в подписку (сервер определяется по идентификатору; без поддержки подписок — ничего не делает)
+	/// </summary>
+	public Task SetSubscriptionIdAsync(Guid id, string subscriptionId, CancellationToken cancellationToken);
 }

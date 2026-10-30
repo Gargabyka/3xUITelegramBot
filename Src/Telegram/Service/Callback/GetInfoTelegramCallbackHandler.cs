@@ -7,7 +7,6 @@ using Domain.Interfaces.Repository;
 using Domain.Models;
 using JetBrains.Annotations;
 using Microsoft.Extensions.DependencyInjection;
-using QRCoder;
 using Telegram.Bot;
 using Telegram.Bot.Types;
 using Telegram.Bot.Types.Enums;
@@ -84,7 +83,7 @@ public class GetInfoTelegramCallbackHandler : TelegramCallbackHandlerBase
 		    .Replace("\r\n", "\n")
 		    .Replace("\r", "\n");
 
-	    var qrPng = TryBuildQrPng(configText);
+	    var qrPng = QrCodeHelper.TryBuildPng(configText);
 
 	    var trafficSummary = await BuildTrafficSummaryAsync(client.Id, cancellationToken);
 
@@ -202,21 +201,6 @@ public class GetInfoTelegramCallbackHandler : TelegramCallbackHandlerBase
     {
 	    var (rx, tx) = TrafficUsageCalculator.ComputeUsage(snapshots);
 	    return $"{label}: {TrafficFormatter.FormatBytes(rx + tx)}";
-    }
-
-    private static byte[]? TryBuildQrPng(string payload)
-    {
-	    try
-	    {
-		    using var gen = new QRCodeGenerator();
-		    using var data = gen.CreateQrCode(payload, QRCodeGenerator.ECCLevel.Q);
-		    using var qr = new PngByteQRCode(data);
-		    return qr.GetGraphic(pixelsPerModule: 8);
-	    }
-	    catch (QRCoder.Exceptions.DataTooLongException)
-	    {
-		    return null;
-	    }
     }
 
     private async Task<string> BuildTrafficSummaryAsync(Guid clientId, CancellationToken cancellationToken)

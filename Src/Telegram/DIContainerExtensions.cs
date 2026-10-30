@@ -43,6 +43,13 @@ public static class DiContainerExtensions
         services.AddHostedService<HostingReminderBackgroundService>();
         services.AddHostedService<VpnTrafficSnapshotBackgroundService>();
 
+        services.AddOptions<SubscriptionOptions>()
+            .Bind(configuration.GetSection("Subscription"))
+            .Validate(
+                o => !o.Enabled || Uri.TryCreate(o.BaseUrl, UriKind.Absolute, out _),
+                "Subscription:BaseUrl должен быть полным адресом, например https://vpn.example.com:2096/sub/")
+            .ValidateOnStart();
+
         services.AddOptions<MonitoringOptions>()
             .Bind(configuration.GetSection("Monitoring"));
         services.AddHostedService<ServerMonitoringBackgroundService>();
