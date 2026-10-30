@@ -67,7 +67,8 @@ public sealed class ClientSubscriptionTelegramCallbackHandler : TelegramCallback
 			return;
 		}
 
-		// Карточку соединения не удаляем: подписка приходит отдельным сообщением, как и скачанная ссылка
+		// Подписка заменяет карточку: «К соединению» присылает карточку заново, и дублей в чате не остаётся
+		await TryDeleteOriginMessageAsync(update, cancellationToken);
 		await AnswerAsync(update, cancellationToken);
 
 		var backToCard = new TelegramRequest(request.Id, TelegramCallbackEvent.GetFullInfo, request.SourceEvent, request.Page);

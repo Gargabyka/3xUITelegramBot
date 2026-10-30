@@ -25,8 +25,6 @@ public sealed class StatsTelegramCallbackHandler : TelegramAdminCallbackHandlerB
 	private const int TopSize = 10;
 	private const int MaxOnlineLines = 40;
 
-	// Панели обновляют время последней активности раз в несколько секунд, рукопожатие WireGuard — раз в 2 минуты
-	private static readonly TimeSpan OnlineWindow = TimeSpan.FromMinutes(3);
 	private static readonly TimeSpan TopPeriod = TimeSpan.FromDays(30);
 
 	private readonly ITelegramBotClient _telegramBot;
@@ -108,9 +106,9 @@ public sealed class StatsTelegramCallbackHandler : TelegramAdminCallbackHandlerB
 
 	private static void AppendOnline(StringBuilder text, VpnServerClient[] clients, Dictionary<Guid, string> owners)
 	{
-		var since = DateTimeOffset.UtcNow - OnlineWindow;
+		// То же правило «онлайн», что и в списках соединений
 		var online = clients
-			.Where(x => x.LatestHandshakeAt >= since)
+			.Where(ConnectionStatus.IsOnline)
 			.OrderBy(x => x.Name, StringComparer.OrdinalIgnoreCase)
 			.ToArray();
 

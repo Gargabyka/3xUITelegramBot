@@ -129,7 +129,7 @@ public class UserConnectionsCallbackHandler : TelegramAdminCallbackHandlerBase
 			.Take(PageSize)
 			.ToArray();
 
-		var rows = BuildPeerRows(pageConnections, request.Id, page, clientsById);
+		var rows = BuildPeerRows(pageConnections, request.Id, page);
 
 		// Общий трафик считаем по снимкам (переживают рестарт xray или сброса трафика),
 		// а не по живым счётчикам API — иначе после рестарта тут показывался бы 0 вместо реальной суммы.
@@ -172,11 +172,18 @@ public class UserConnectionsCallbackHandler : TelegramAdminCallbackHandlerBase
 		rows.Add([InlineKeyboardButton.WithCallbackData("⬅ Назад к пользователю", Encode(backToUserInfo))]);
 
 		var trafficLine = $"Всего использовано трафика: {TrafficFormatter.FormatBytes(totalBytes)}";
+		var statusLines = string.Join(
+			"\n",
+			pageConnections.Select(c => ConnectionStatus.Line(c.Peer.Name, c.Peer.Profile, clientsById.GetValueOrDefault(c.Peer.ClientId))));
 
 		await _bot.SendMessage(
 			chatId: chatId,
 			text: $"""
 			       Соединения пользователя{userNameSuffix} (нажмите на имя для подробностей):
+
+			       {statusLines}
+
+			       {ConnectionStatus.Legend}
 			       {trafficLine}
 			       """,
 			replyMarkup: new InlineKeyboardMarkup(rows),
@@ -188,8 +195,7 @@ public class UserConnectionsCallbackHandler : TelegramAdminCallbackHandlerBase
 	private static List<InlineKeyboardButton[]> BuildPeerRows(
 		IEnumerable<Domain.Entities.VpnUser> connections,
 		Guid userRequestId,
-		int page,
-		IReadOnlyDictionary<Guid, VpnServerClient> clientsById)
+		int page)
 	{
 		var rows = new List<InlineKeyboardButton[]>();
 
@@ -197,12 +203,9 @@ public class UserConnectionsCallbackHandler : TelegramAdminCallbackHandlerBase
 		{
 			var peer = c.Peer;
 
-			var statusIcon = clientsById.TryGetValue(peer.ClientId, out var client)
-				? (client.Enabled ? "🟢 " : "🔴 ")
-				: string.Empty;
-
+			// Статус — в тексте сообщения: на кнопках значки не встают в колонку
 			var infoBtn = InlineKeyboardButton.WithCallbackData(
-				text: $"{statusIcon}{peer.Name} · {peer.Profile.ShortTitle()}",
+				text: ConnectionStatus.ButtonText(peer.Name, peer.Profile),
 				callbackData: TelegramCallbackDataCodec.Encode(
 					new TelegramRequest(
 						Id: peer.ClientId,

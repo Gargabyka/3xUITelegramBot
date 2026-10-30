@@ -129,7 +129,13 @@ public class ListTelegramCallbackHandler : TelegramCallbackHandlerBase
 
         await _telegramBot.SendMessage(
             chatId: chatId,
-            text: "Выберите клиента — покажу подробную информацию:" + unavailableNote,
+            text: $"""
+                   Выберите клиента — покажу подробную информацию:
+
+                   {string.Join("\n", pageClients.Select(x => ConnectionStatus.Line(x.Name, x.Profile, x)))}
+
+                   {ConnectionStatus.Legend}
+                   """ + unavailableNote,
             replyMarkup: new InlineKeyboardMarkup(rows),
             cancellationToken: cancellationToken);
 
@@ -150,12 +156,12 @@ public class ListTelegramCallbackHandler : TelegramCallbackHandlerBase
 
     private static List<InlineKeyboardButton[]> BuildClientRows(IEnumerable<VpnServerClient> clients)
     {
-        // Имя первым и по одной кнопке в ряд: иначе Telegram обрезает название соединения
+        // По одной кнопке в ряд, чтобы имя было видно целиком; статус — в тексте сообщения
         return clients
             .Select(client => new[]
             {
                 InlineKeyboardButton.WithCallbackData(
-                    text: $"{(client.Enabled ? "🟢" : "🔴")} {client.Name} · {client.Profile.ShortTitle()}",
+                    text: ConnectionStatus.ButtonText(client.Name, client.Profile),
                     callbackData: TelegramCallbackDataCodec.Encode(
                         new TelegramRequest(
                             Id: client.Id,
