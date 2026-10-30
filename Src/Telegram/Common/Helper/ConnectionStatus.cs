@@ -1,15 +1,20 @@
 using Domain.Enums;
 using Domain.Extensions;
 using Domain.Models;
+using Telegram.Bot.Types.ReplyMarkups;
 
 namespace Telegram.Common.Helper;
 
 /// <summary>
-/// Статус соединения в списках. Статус пишется в тексте сообщения, а не на кнопках:
-/// текст кнопок Telegram выравнивает по центру, и значки не встают в колонку
+/// Статус соединения в списках: значок на кнопке соединения, кнопки — сеткой 3×3
 /// </summary>
 public static class ConnectionStatus
 {
+	/// <summary>
+	/// Кнопок в ряду: на странице 9 соединений — сетка 3×3
+	/// </summary>
+	public const int Columns = 3;
+
 	/// <summary>
 	/// Расшифровка значков под списком
 	/// </summary>
@@ -36,14 +41,14 @@ public static class ConnectionStatus
 	};
 
 	/// <summary>
-	/// Строка списка: значок, имя и короткая метка профиля
+	/// Подпись кнопки: значок, затем имя — при нехватке места обрезается короткая метка профиля, а не название
 	/// </summary>
-	public static string Line(string name, VpnProfileType profile, VpnServerClient? client)
+	public static string ButtonText(string name, VpnProfileType profile, VpnServerClient? client)
 		=> $"{Icon(client)} {name} · {profile.ShortTitle()}";
 
 	/// <summary>
-	/// Подпись кнопки: имя первым, чтобы при нехватке места обрезалась метка, а не название
+	/// Разложить кнопки сеткой по <see cref="Columns"/> в ряд
 	/// </summary>
-	public static string ButtonText(string name, VpnProfileType profile)
-		=> $"{name} · {profile.ShortTitle()}";
+	public static List<InlineKeyboardButton[]> ToGrid(IEnumerable<InlineKeyboardButton> buttons)
+		=> buttons.Chunk(Columns).ToList();
 }

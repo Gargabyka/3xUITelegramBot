@@ -110,7 +110,7 @@ public sealed class MyConnectionsTelegramCallbackHandler : TelegramCallbackHandl
 			.Take(PageSize)
 			.ToArray();
 
-		var rows = BuildPeerRows(pageConnections, page);
+		var rows = BuildPeerRows(pageConnections, page, clientsById);
 
 		// Общий трафик считаем по снимкам (переживают рестарт xray или сброса трафика),
 		// а не по живым счётчикам API — иначе после рестарта тут показывался бы 0 вместо реальной суммы.
@@ -152,17 +152,11 @@ public sealed class MyConnectionsTelegramCallbackHandler : TelegramCallbackHandl
 		rows.Add([InlineKeyboardButton.WithCallbackData("⬅ Назад", Encode(back))]);
 
 		var trafficLine = $"Всего использовано трафика: {TrafficFormatter.FormatBytes(totalBytes)}";
-		var statusLines = string.Join(
-			"\n",
-			pageConnections.Select(c => ConnectionStatus.Line(c.Peer.Name, c.Peer.Profile, clientsById.GetValueOrDefault(c.Peer.ClientId))));
 
 		await _bot.SendMessage(
 			chatId: chatId,
 			text: $"""
 			       Ваши соединения (нажмите на имя для подробностей):
-
-			       {statusLines}
-
 			       {ConnectionStatus.Legend}
 			       {trafficLine}
 			       """,
@@ -174,21 +168,17 @@ public sealed class MyConnectionsTelegramCallbackHandler : TelegramCallbackHandl
 
 	private static List<InlineKeyboardButton[]> BuildPeerRows(
 		IEnumerable<Domain.Entities.VpnUser> connections,
-		int page)
+		int page,
+		IReadOnlyDictionary<Guid, VpnServerClient> clientsById)
 	{
-		// По одной кнопке в ряд — на всю ширину, чтобы имя было видно целиком; статус — в тексте сообщения
-		return connections
-			.Select(c => new[]
-			{
-				InlineKeyboardButton.WithCallbackData(
-					text: ConnectionStatus.ButtonText(c.Peer.Name, c.Peer.Profile),
-					callbackData: TelegramCallbackDataCodec.Encode(
-						new TelegramRequest(
-							Id: c.Peer.ClientId, // Guid клиента 3x-ui
-							CallbackEvent: TelegramCallbackEvent.GetFullInfo,
-							SourceEvent: TelegramCallbackEvent.MyConnections,
-							Page: page))),
-			})
-			.ToList();
+		return ConnectionStatus.ToGrid(connections.Select(c =>
+			InlineKeyboardButton.WithCallbackData(
+				text: ConnectionStatus.ButtonText(c.Peer.Name, c.Peer.Profile, clientsById.GetValueOrDefault(c.Peer.ClientId)),
+				callbackData: TelegramCallbackDataCodec.Encode(
+					new TelegramRequest(
+						Id: c.Peer.ClientId, // Guid клиента 3x-ui
+						CallbackEvent: TelegramCallbackEvent.GetFullInfo,
+						SourceEvent: TelegramCallbackEvent.MyConnections,
+						Page: page)))));
 	}
 }
