@@ -55,8 +55,8 @@ public sealed class VpnApiService : IVpnApiService
 	public async Task DeleteClientAsync(Guid id, CancellationToken cancellationToken)
 		=> await (await ResolveAsync(id, cancellationToken)).DeleteClientAsync(id, cancellationToken);
 
-	public Task AddClientAsync(VpnProfileType profile, string name, string? subscriptionId, CancellationToken cancellationToken)
-		=> GetBackend(profile).AddClientAsync(name, subscriptionId, cancellationToken);
+	public Task AddClientAsync(VpnProfileType profile, string name, CancellationToken cancellationToken)
+		=> GetBackend(profile).AddClientAsync(name, cancellationToken);
 
 	public async Task EnableClientAsync(Guid id, CancellationToken cancellationToken)
 		=> await (await ResolveAsync(id, cancellationToken)).EnableClientAsync(id, cancellationToken);

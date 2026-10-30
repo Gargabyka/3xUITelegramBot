@@ -1,4 +1,3 @@
-using Application.Services;
 using Domain.Entities;
 using Domain.Enums;
 using Domain.Extensions;
@@ -131,16 +130,7 @@ public sealed class AddClientNameTextFlowHandler : ITelegramTextFlowHandler
             }
 
             // Создаём на сервере
-            // Новое соединение сразу попадает в ссылку-подписку пользователя
-            string? subscriptionId;
-            using (var subscriptionScope = _scopeFactory.CreateScope())
-            {
-                subscriptionId = await subscriptionScope.ServiceProvider
-                    .GetRequiredService<SubscriptionService>()
-                    .GetOrCreateIdAsync(chatId, cancellationToken);
-            }
-
-            await _xuiApi.AddClientAsync(profile.Type, clientName, subscriptionId, cancellationToken);
+            await _xuiApi.AddClientAsync(profile.Type, clientName, cancellationToken);
 
             // Сразу подтягиваем созданного клиента (чтобы получить Guid Id и остальные поля)
             var updatedClients = await _xuiApi.GetClients(cancellationToken);

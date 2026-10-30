@@ -10,6 +10,7 @@ namespace XUi.Models;
 /// <param name="Up">Трафик от клиента, байт</param>
 /// <param name="Down">Трафик к клиенту, байт</param>
 /// <param name="CreatedAt">Дата создания</param>
+/// <param name="SubId">subId ссылки-подписки</param>
 public sealed record XUiPanelClient(
 	Guid Id,
 	string Email,
@@ -17,4 +18,5 @@ public sealed record XUiPanelClient(
 	int[] InboundIds,
 	long Up,
 	long Down,
-	DateTimeOffset? CreatedAt);
+	DateTimeOffset? CreatedAt,
+	string? SubId);

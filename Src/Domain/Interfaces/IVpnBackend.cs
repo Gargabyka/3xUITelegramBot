@@ -35,10 +35,7 @@ public interface IVpnBackend
 	/// <summary>
 	/// Добавить клиента
 	/// </summary>
-	/// <param name="name">Имя клиента</param>
-	/// <param name="subscriptionId">Подписка, в которую попадёт клиент (null — своя случайная); сервер без подписок её игнорирует</param>
-	/// <param name="cancellationToken">Токен отмены</param>
-	public Task AddClientAsync(string name, string? subscriptionId, CancellationToken cancellationToken);
+	public Task AddClientAsync(string name, CancellationToken cancellationToken);
 
 	/// <summary>
 	/// Включить клиента
@@ -56,7 +53,7 @@ public interface IVpnBackend
 	public Task RenameClientAsync(Guid id, string newName, CancellationToken cancellationToken);
 
 	/// <summary>
-	/// Перенести клиента в подписку (сменить subId). Ничего не делает, если клиент уже в ней
+	/// Сменить subId клиента (ссылку-подписку). Ничего не делает, если subId уже такой
 	/// </summary>
 	public Task SetSubscriptionIdAsync(Guid id, string subscriptionId, CancellationToken cancellationToken);
 }

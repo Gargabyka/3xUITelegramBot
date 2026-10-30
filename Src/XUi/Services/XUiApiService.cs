@@ -56,7 +56,8 @@ public class XUiApiService : IVpnBackend
                     ? DateTimeOffset.FromUnixTimeMilliseconds(ts)
                     : null,
                 TransferRx: x.Up,
-                TransferTx: x.Down))
+                TransferTx: x.Down,
+                SubscriptionId: x.SubId))
             .ToArray();
     }
 
@@ -90,7 +91,7 @@ public class XUiApiService : IVpnBackend
         }
     }
 
-    public async Task AddClientAsync(string name, string? subscriptionId, CancellationToken cancellationToken)
+    public async Task AddClientAsync(string name, CancellationToken cancellationToken)
     {
         var body = new JsonObject
         {
@@ -98,7 +99,8 @@ public class XUiApiService : IVpnBackend
             {
                 ["email"] = name,
                 ["id"] = Guid.NewGuid().ToString(),
-                ["subId"] = subscriptionId ?? Guid.NewGuid().ToString("N")[..16],
+                // Своя случайная ссылка-подписка у каждого соединения
+                ["subId"] = SubscriptionIds.New(),
                 ["flow"] = _inbound.Flow ?? _options.Flow,
                 ["enable"] = true,
                 ["totalGB"] = 0,
@@ -280,7 +282,8 @@ public class XUiApiService : IVpnBackend
                 InboundIds: inboundIds,
                 Up: ReadLong(traffic, "up"),
                 Down: ReadLong(traffic, "down"),
-                CreatedAt: ReadUnixMillis(client, "createdAt")));
+                CreatedAt: ReadUnixMillis(client, "createdAt"),
+                SubId: client["subId"]?.GetValue<string>()));
         }
 
         return new XUiPanelSnapshot(clients, lastOnline, DateTime.UtcNow);

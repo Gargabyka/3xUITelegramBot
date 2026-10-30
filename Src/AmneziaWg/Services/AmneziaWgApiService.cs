@@ -74,7 +74,7 @@ public sealed class AmneziaWgApiService : IVpnBackend
 	public Task SetSubscriptionIdAsync(Guid id, string subscriptionId, CancellationToken cancellationToken)
 		=> Task.CompletedTask;
 
-	public async Task AddClientAsync(string name, string? subscriptionId, CancellationToken cancellationToken)
+	public async Task AddClientAsync(string name, CancellationToken cancellationToken)
 	{
 		var body = JsonSerializer.Serialize(new { name });
 

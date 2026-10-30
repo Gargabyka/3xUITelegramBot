@@ -15,6 +15,7 @@ namespace Domain.Models;
 /// <param name="LatestHandshakeAt">Дата последнего подключения (null — ни разу не подключался)</param>
 /// <param name="TransferRx">Байт получено сервером от клиента</param>
 /// <param name="TransferTx">Байт отправлено сервером клиенту</param>
+/// <param name="SubscriptionId">subId ссылки-подписки (только 3x-ui; null — у сервера нет подписок)</param>
 public record VpnServerClient(
 	Guid Id,
 	VpnProfileType Profile,
@@ -25,4 +26,5 @@ public record VpnServerClient(
 	DateTimeOffset CreatedAt,
 	DateTimeOffset? LatestHandshakeAt,
 	long TransferRx,
-	long TransferTx);
+	long TransferTx,
+	string? SubscriptionId = null);
