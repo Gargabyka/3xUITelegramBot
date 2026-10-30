@@ -202,7 +202,7 @@ public class UserConnectionsCallbackHandler : TelegramAdminCallbackHandlerBase
 				: string.Empty;
 
 			var infoBtn = InlineKeyboardButton.WithCallbackData(
-				text: $"{statusIcon}[{peer.Profile.Title()}] {peer.Name}",
+				text: $"{statusIcon}{peer.Name} · {peer.Profile.ShortTitle()}",
 				callbackData: TelegramCallbackDataCodec.Encode(
 					new TelegramRequest(
 						Id: peer.ClientId,

@@ -17,6 +17,18 @@ public static class VpnProfileTypeExtensions
 	};
 
 	/// <summary>
+	/// Короткая метка профиля для кнопок в списках: длинное название съедает имя соединения
+	/// </summary>
+	public static string ShortTitle(this VpnProfileType profile) => profile switch
+	{
+		VpnProfileType.VlessRaw => "Raw",
+		VpnProfileType.VlessXhttp => "XHTTP",
+		VpnProfileType.VlessXhttpCdn => "CDN",
+		VpnProfileType.AmneziaWg => "AWG",
+		_ => profile.ToString(),
+	};
+
+	/// <summary>
 	/// Подсказка по выбору профиля
 	/// </summary>
 	public static string Description(this VpnProfileType profile) => profile switch

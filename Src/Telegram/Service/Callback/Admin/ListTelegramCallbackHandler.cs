@@ -150,22 +150,18 @@ public class ListTelegramCallbackHandler : TelegramCallbackHandlerBase
 
     private static List<InlineKeyboardButton[]> BuildClientRows(IEnumerable<VpnServerClient> clients)
     {
-        var buttons = clients
-            .Select(client => InlineKeyboardButton.WithCallbackData(
-                text: $"{(client.Enabled ? "🟢" : "🔴")} [{client.Profile.Title()}] {client.Name}",
-                callbackData: TelegramCallbackDataCodec.Encode(
-                    new TelegramRequest(
-                        Id: client.Id,
-                        CallbackEvent: TelegramCallbackEvent.GetFullInfo,
-                        SourceEvent: TelegramCallbackEvent.List))))
+        // Имя первым и по одной кнопке в ряд: иначе Telegram обрезает название соединения
+        return clients
+            .Select(client => new[]
+            {
+                InlineKeyboardButton.WithCallbackData(
+                    text: $"{(client.Enabled ? "🟢" : "🔴")} {client.Name} · {client.Profile.ShortTitle()}",
+                    callbackData: TelegramCallbackDataCodec.Encode(
+                        new TelegramRequest(
+                            Id: client.Id,
+                            CallbackEvent: TelegramCallbackEvent.GetFullInfo,
+                            SourceEvent: TelegramCallbackEvent.List))),
+            })
             .ToList();
-
-        var rows = new List<InlineKeyboardButton[]>();
-        for (var i = 0; i < buttons.Count; i += 3)
-        {
-            rows.Add(buttons.Skip(i).Take(3).ToArray());
-        }
-
-        return rows;
     }
 }

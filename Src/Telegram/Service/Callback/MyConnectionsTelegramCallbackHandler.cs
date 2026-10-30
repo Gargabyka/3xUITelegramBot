@@ -178,8 +178,9 @@ public sealed class MyConnectionsTelegramCallbackHandler : TelegramCallbackHandl
 					? (client.Enabled ? "🟢 " : "🔴 ")
 					: string.Empty;
 
+				// Имя первым: если кнопка не влезет, Telegram обрежет конец, а не название соединения
 				return InlineKeyboardButton.WithCallbackData(
-					text: $"{statusIcon}[{peer.Profile.Title()}] {peer.Name}",
+					text: $"{statusIcon}{peer.Name} · {peer.Profile.ShortTitle()}",
 					callbackData: TelegramCallbackDataCodec.Encode(
 						new TelegramRequest(
 							Id: peer.ClientId, // Guid клиента 3x-ui
@@ -189,12 +190,7 @@ public sealed class MyConnectionsTelegramCallbackHandler : TelegramCallbackHandl
 			})
 			.ToList();
 
-		var rows = new List<InlineKeyboardButton[]>();
-		for (var i = 0; i < buttons.Count; i += 3)
-		{
-			rows.Add(buttons.Skip(i).Take(3).ToArray());
-		}
-
-		return rows;
+		// По одной кнопке в ряд — на всю ширину, чтобы имя было видно целиком
+		return buttons.Select(x => new[] { x }).ToList();
 	}
 }

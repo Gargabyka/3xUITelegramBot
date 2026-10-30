@@ -99,8 +99,7 @@ public class XUiApiService : IVpnBackend
             {
                 ["email"] = name,
                 ["id"] = Guid.NewGuid().ToString(),
-                // Своя случайная ссылка-подписка у каждого соединения
-                ["subId"] = SubscriptionIds.New(),
+                ["subId"] = SubscriptionIds.New(), // своя ссылка-подписка у каждого соединения
                 ["flow"] = _inbound.Flow ?? _options.Flow,
                 ["enable"] = true,
                 ["totalGB"] = 0,
