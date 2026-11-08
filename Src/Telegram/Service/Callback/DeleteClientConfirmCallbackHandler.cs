@@ -24,6 +24,7 @@ public class DeleteClientConfirmCallbackHandler : TelegramCallbackHandlerBase
     private readonly TelegramAccessService _access;
     private readonly AuditLogger _audit;
     private readonly ILogger<DeleteClientConfirmCallbackHandler> _logger;
+    private readonly ConnectionNavigation _navigation;
 
     public DeleteClientConfirmCallbackHandler(
         ITelegramBotClient telegramBot,
@@ -31,9 +32,11 @@ public class DeleteClientConfirmCallbackHandler : TelegramCallbackHandlerBase
         IServiceScopeFactory scopeFactory,
         TelegramAccessService access,
         AuditLogger audit,
-        ILogger<DeleteClientConfirmCallbackHandler> logger)
+        ILogger<DeleteClientConfirmCallbackHandler> logger,
+        ConnectionNavigation navigation)
         : base(telegramBot)
     {
+        _navigation = navigation;
         _audit = audit;
         _telegramBot = telegramBot;
         _xuiApiService = xuiApiService;
@@ -53,6 +56,9 @@ public class DeleteClientConfirmCallbackHandler : TelegramCallbackHandlerBase
             await DenyAsync(update, "Это соединение вам не принадлежит.", cancellationToken);
             return;
         }
+
+        // Куда вернуться, определяем заранее: после удаления связи с владельцем уже не будет
+        var backToList = await _navigation.BackToListAsync(request, cancellationToken);
 
         // Удаляем экран подтверждения, чтобы не плодить сообщения
         await TryDeleteOriginMessageAsync(update, cancellationToken);
@@ -98,17 +104,6 @@ public class DeleteClientConfirmCallbackHandler : TelegramCallbackHandlerBase
             chatId: chatId,
             text: "Клиент удалён.",
             cancellationToken: cancellationToken);
-
-        // Возвращаем туда, откуда пришли (MyConnections или List)
-        var backTarget = request.SourceEvent == TelegramCallbackEvent.MyConnections
-            ? TelegramCallbackEvent.MyConnections
-            : TelegramCallbackEvent.List;
-
-        var backToList = new TelegramRequest(
-            Id: Guid.Empty,
-            CallbackEvent: backTarget,
-            SourceEvent: backTarget,
-            Page: request.Page);
 
         await _telegramBot.SendMessage(
             chatId: chatId,

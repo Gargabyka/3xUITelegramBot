@@ -54,4 +54,13 @@ public enum AuditAction
 
 	[Display(Description = "Рассылка")]
 	Broadcast = 31,
+
+	[Display(Description = "Изменены настройки напоминаний об оплате")]
+	HostingReminderChanged = 40,
+
+	[Display(Description = "Отмечена оплата сервера")]
+	HostingPaid = 41,
+
+	[Display(Description = "Напоминание об оплате разослано вручную")]
+	HostingReminderSent = 42,
 }

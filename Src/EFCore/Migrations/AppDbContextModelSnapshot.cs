@@ -54,8 +54,31 @@ namespace EFCore.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("INTEGER");
 
+                    b.Property<bool>("Enabled")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER")
+                        .HasDefaultValue(false);
+
+                    b.Property<DateOnly?>("LastPaymentDate")
+                        .HasColumnType("TEXT");
+
                     b.Property<DateTime?>("LastSentAtUtc")
                         .HasColumnType("TEXT");
+
+                    b.Property<long?>("MessageChatId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int?>("MessageId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("MessageText")
+                        .HasMaxLength(4096)
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("PeriodMonths")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER")
+                        .HasDefaultValue(2);
 
                     b.Property<int>("RemindersSentCount")
                         .ValueGeneratedOnAdd()

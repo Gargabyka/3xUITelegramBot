@@ -213,5 +213,11 @@ public enum TelegramCallbackEvent
     [CallbackCode("st")]
     Stats = 43,
 
+    /// <summary>
+    /// Напоминания об оплате сервера: экран настроек и его действия (код действия в Page)
+    /// </summary>
+    [CallbackCode("hr")]
+    HostingReminder = 44,
+
     #endregion
 }

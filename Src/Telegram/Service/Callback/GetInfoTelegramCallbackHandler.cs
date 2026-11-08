@@ -32,6 +32,7 @@ public class GetInfoTelegramCallbackHandler : TelegramCallbackHandlerBase
     private readonly TelegramAccessService _access;
     private readonly SubscriptionOptions _subscriptionOptions;
     private readonly ILogger<GetInfoTelegramCallbackHandler> _logger;
+    private readonly ConnectionNavigation _navigation;
 
     public GetInfoTelegramCallbackHandler(
         IVpnApiService xuiApiService,
@@ -39,9 +40,11 @@ public class GetInfoTelegramCallbackHandler : TelegramCallbackHandlerBase
         IServiceScopeFactory scopeFactory,
         TelegramAccessService access,
         IOptions<SubscriptionOptions> subscriptionOptions,
-        ILogger<GetInfoTelegramCallbackHandler> logger)
+        ILogger<GetInfoTelegramCallbackHandler> logger,
+        ConnectionNavigation navigation)
         : base(telegramBot)
     {
+        _navigation = navigation;
         _xuiApiService = xuiApiService;
         _telegramBot = telegramBot;
         _scopeFactory = scopeFactory;
@@ -104,16 +107,8 @@ public class GetInfoTelegramCallbackHandler : TelegramCallbackHandlerBase
 	                   Выберите действие:
 	                   """;
 
-	    // Назад возвращает туда, откуда пришли (MyConnections или List)
-	    var backTarget = request.SourceEvent == TelegramCallbackEvent.MyConnections
-		    ? TelegramCallbackEvent.MyConnections
-		    : TelegramCallbackEvent.List;
-
-	    var backRequest = new TelegramRequest(
-		    Id: Guid.Empty,
-		    CallbackEvent: backTarget,
-		    SourceEvent: backTarget,
-		    Page: request.Page);
+	    // Назад возвращает туда, откуда пришли
+	    var backRequest = await _navigation.BackToListAsync(request, cancellationToken);
 
 	    var downloadRequest = WithEvent(
 		    request,

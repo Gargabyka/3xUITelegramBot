@@ -15,5 +15,16 @@ public sealed class HostingReminderStateConfiguration : IEntityTypeConfiguration
 			.HasDefaultValue(0);
 
 		builder.Property(x => x.LastSentAtUtc);
+
+		builder.Property(x => x.Enabled)
+			.IsRequired()
+			.HasDefaultValue(false);
+
+		builder.Property(x => x.PeriodMonths)
+			.IsRequired()
+			.HasDefaultValue(2);
+
+		builder.Property(x => x.MessageText)
+			.HasMaxLength(4096);
 	}
 }

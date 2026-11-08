@@ -43,10 +43,12 @@ public class DeleteClientAskConfirmCallbackHandler : TelegramCallbackHandlerBase
             TelegramCallbackEvent.DeleteClientConfirm,
             sourceEvent: request.SourceEvent ?? TelegramCallbackEvent.GetFullInfo);
 
+        // Назад — на карточку этого соединения; откуда её открыли и страницу передаём дальше
         var backToInfoRequest = new TelegramRequest(
             Id: request.Id,
-            CallbackEvent: request.SourceEvent ?? TelegramCallbackEvent.GetFullInfo,
-            SourceEvent: request.SourceEvent ?? TelegramCallbackEvent.GetFullInfo);
+            CallbackEvent: TelegramCallbackEvent.GetFullInfo,
+            SourceEvent: request.SourceEvent,
+            Page: request.Page);
 
         var markup = new InlineKeyboardMarkup(
         [

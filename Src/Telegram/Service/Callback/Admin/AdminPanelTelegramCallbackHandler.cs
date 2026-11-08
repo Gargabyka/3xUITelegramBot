@@ -113,6 +113,9 @@ public sealed class AdminPanelTelegramCallbackHandler : TelegramAdminCallbackHan
 				InlineKeyboardButton.WithCallbackData("📣 Рассылка", TelegramCallbackDataCodec.Encode(broadcastRequest)),
 			],
 			[
+				InlineKeyboardButton.WithCallbackData("💰 Оплата сервера", TelegramCallbackDataCodec.Encode(HostingReminderScreen.Action(HostingReminderScreen.Show))),
+			],
+			[
 				InlineKeyboardButton.WithCallbackData("📜 Журнал действий", TelegramCallbackDataCodec.Encode(auditLogRequest)),
 			],
 			[

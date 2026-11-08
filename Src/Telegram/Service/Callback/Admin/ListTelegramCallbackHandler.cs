@@ -95,7 +95,7 @@ public class ListTelegramCallbackHandler : TelegramCallbackHandlerBase
             .Take(PageSize)
             .ToArray();
 
-        var rows = BuildClientRows(pageClients);
+        var rows = BuildClientRows(pageClients, page);
 
         // Навигация
         var prevPage = Math.Max(0, page - 1);
@@ -151,7 +151,7 @@ public class ListTelegramCallbackHandler : TelegramCallbackHandlerBase
             : $"\n\n⚠ Не ответили — их клиентов нет в списке:\n{string.Join("\n", unavailable)}";
     }
 
-    private static List<InlineKeyboardButton[]> BuildClientRows(IEnumerable<VpnServerClient> clients)
+    private static List<InlineKeyboardButton[]> BuildClientRows(IEnumerable<VpnServerClient> clients, int page)
     {
         return ConnectionStatus.ToGrid(clients.Select(client =>
             InlineKeyboardButton.WithCallbackData(
@@ -160,6 +160,7 @@ public class ListTelegramCallbackHandler : TelegramCallbackHandlerBase
                     new TelegramRequest(
                         Id: client.Id,
                         CallbackEvent: TelegramCallbackEvent.GetFullInfo,
-                        SourceEvent: TelegramCallbackEvent.List)))));
+                        SourceEvent: TelegramCallbackEvent.List,
+                        Page: page)))));
     }
 }

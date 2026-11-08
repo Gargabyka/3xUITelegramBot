@@ -5,7 +5,6 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
 using Telegram.Bot;
 using Telegram.Bot.Types;
-using Telegram.Common.Helper;
 using Telegram.Models;
 using Telegram.Service.Interface;
 
@@ -20,20 +19,20 @@ public sealed class StatusTelegramUpdateHandler : ITelegramUpdateHandler
 	private readonly ITelegramBotClient _telegramBot;
 	private readonly IVpnApiService _xuiApiService;
 	private readonly TelegramOptions _telegramOptions;
-	private readonly HostingReminderOptions _hostingReminderOptions;
+	private readonly HostingReminderService _hostingReminders;
 	private readonly IServiceScopeFactory _scopeFactory;
 
 	public StatusTelegramUpdateHandler(
 		ITelegramBotClient telegramBot,
 		IVpnApiService xuiApiService,
 		IOptions<TelegramOptions> telegramOptions,
-		IOptions<HostingReminderOptions> hostingReminderOptions,
+		HostingReminderService hostingReminders,
 		IServiceScopeFactory scopeFactory)
 	{
 		_telegramBot = telegramBot;
 		_xuiApiService = xuiApiService;
 		_telegramOptions = telegramOptions.Value;
-		_hostingReminderOptions = hostingReminderOptions.Value;
+		_hostingReminders = hostingReminders;
 		_scopeFactory = scopeFactory;
 	}
 
@@ -52,7 +51,6 @@ public sealed class StatusTelegramUpdateHandler : ITelegramUpdateHandler
 
 		using var scope = _scopeFactory.CreateScope();
 		var telegramUserRepo = scope.ServiceProvider.GetRequiredService<ITelegramUserRepository>();
-		var hostingReminderStateRepo = scope.ServiceProvider.GetRequiredService<IHostingReminderStateRepository>();
 
 		var usersCount = (await telegramUserRepo.GetUsersAsync(cancellationToken)).Length;
 
@@ -68,17 +66,13 @@ public sealed class StatusTelegramUpdateHandler : ITelegramUpdateHandler
 			return $"{s.Profile.Title}: ✅ доступен\nВсего peer'ов: {s.Clients.Length} (включено: {enabledCount}, отключено: {s.Clients.Length - enabledCount})";
 		}));
 
-		var reminderLine = "Напоминания об оплате: выключены в конфиге";
-		if (_hostingReminderOptions.Enabled)
+		var reminders = await _hostingReminders.GetAsync(cancellationToken);
+		var reminderLine = reminders switch
 		{
-			var reminderState = await hostingReminderStateRepo.GetOrCreateAsync(cancellationToken);
-			var nextDue = HostingReminderScheduler.GetDueDate(
-				_hostingReminderOptions.LastPaymentDate,
-				_hostingReminderOptions.PeriodMonths,
-				reminderState.RemindersSentCount + 1);
-
-			reminderLine = $"Напоминания об оплате: следующее {nextDue:dd.MM.yyyy}";
-		}
+			{ Enabled: false } => "Напоминания об оплате: выключены",
+			{ NextDueDate: { } nextDue } => $"Напоминания об оплате: следующее {nextDue:dd.MM.yyyy}",
+			_ => "Напоминания об оплате: не задана дата оплаты",
+		};
 
 		var text = $"""
 		            📊 Статус системы

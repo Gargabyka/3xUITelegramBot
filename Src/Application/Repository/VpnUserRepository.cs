@@ -47,6 +47,13 @@ public class VpnUserRepository : IVpnUserRepository
 			.Include(x => x.Telegram)
 			.ToArrayAsync(cancellationToken);
 
+	public Task<VpnUser?> GetLinkByClientIdAsync(Guid clientId, CancellationToken cancellationToken)
+		=> _dbContext
+			.VpnUsers
+			.AsNoTracking()
+			.Include(x => x.Telegram)
+			.FirstOrDefaultAsync(x => x.Peer.ClientId == clientId, cancellationToken);
+
 	public Task<int> RemoveLinkAsync(int telegramUserId, int peerId, CancellationToken cancellationToken)
 		=> _dbContext
 			.VpnUsers

@@ -30,6 +30,11 @@ public interface IVpnUserRepository
 	public Task<VpnUser[]> GetAllLinksAsync(CancellationToken cancellationToken);
 
 	/// <summary>
+	/// Получить связь соединения с владельцем по идентификатору клиента на VPN-сервере (с пользователем).
+	/// </summary>
+	public Task<VpnUser?> GetLinkByClientIdAsync(Guid clientId, CancellationToken cancellationToken);
+
+	/// <summary>
 	/// Удалить связь между пользователем и соединением.
 	/// </summary>
 	public Task<int> RemoveLinkAsync(int telegramUserId, int peerId, CancellationToken cancellationToken);
